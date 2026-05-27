@@ -407,7 +407,11 @@ def main() -> int:
 
     enrich_nodes(root, graph["nodes"])
     if not graph["nodes"]:
-        print("[build_graph] no decorated nodes — run scripts/bootstrap_graph.py", file=sys.stderr)
+        print(
+            "[build_graph] no decorated nodes — run the Lean project's "
+            "scripts/bootstrap_graph.py or add @paper-id decorators",
+            file=sys.stderr,
+        )
     else:
         merge_run_history(root, graph)
 

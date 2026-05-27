@@ -7,17 +7,35 @@ graph indexing, and run registry. Works against any Lean project that provides
 ## Quick start
 
 ```bash
+cp .env.example .env   # edit paths, then: source .env
+
 # UI
 cd mathprover-ui && pnpm install && pnpm dev
 
-# Python agents (from repo root)
+# Python agents
 cd agents && uv sync
-export MATHPROVER_HOME="$(pwd)/.."
-export MATHPROVER_PROJECT_PATH="/path/to/your/lean-project"
-uv run python dispatch.py --root "$MATHPROVER_PROJECT_PATH" --node <node-id>
+uv run python dispatch.py --root "$MATHPROVER_PROJECT_PATH" --node <proof-folder> --prover auto
+
+# Reindex a Lean project's graph (from anywhere)
+python3 scripts/reindex_project.py "$MATHPROVER_PROJECT_PATH"
 ```
 
 Open `http://localhost:5173/workspace?project=/path/to/lean-project`.
+
+## Lean project contract
+
+Any Lean repo can use MathProver if it provides:
+
+| File | Purpose |
+|------|---------|
+| `lakefile.lean` | Lake build (UI marker) |
+| `mathprover.toml` | Prover routing (see `mathprover.toml.example`) |
+| `scripts/bootstrap_graph.py` | Optional hand-maintained DAG when decorators absent |
+| `scripts/reindex_graph.py` | Optional; delegates to MathProver (see [lean-runtime-analysis](https://github.com/VidiomTM/lean-runtime-analysis)) |
+| `.mathprover/graph.json` | Generated DAG (gitignored in most projects) |
+| `proofs/<folder>/` | Optional worker scaffolds for dispatch |
+
+Reference implementation: [VidiomTM/lean-runtime-analysis](https://github.com/VidiomTM/lean-runtime-analysis).
 
 ## Layout
 
@@ -27,7 +45,8 @@ mathprover/                 # this repo (MATHPROVER_HOME)
 ├── agents/                 # dispatch router + prover backends
 ├── scripts/
 │   ├── build_graph.py      # scan .lean decorators → graph.json
-│   └── index_runs.py       # merge runs into graph metadata
+│   ├── index_runs.py       # merge runs into graph metadata
+│   └── reindex_project.py  # one-shot reindex for any Lean project
 └── openspec/               # workbench + dispatch specs
 
 your-lean-project/          # separate repo (e.g. lean-runtime-analysis)
