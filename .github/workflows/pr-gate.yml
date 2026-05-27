@@ -131,19 +131,14 @@ jobs:
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
-    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    if: false  # Private repo: requires GitHub Advanced Security license to upload SARIF
     permissions:
       contents: read
       security-events: write
       actions: read
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: python
-          queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+      - run: echo "Enable GHAS or make repo public to activate CodeQL"
 
   required-checks:
     name: Required Checks (PR)
@@ -158,7 +153,6 @@ jobs:
       - python-format
       - python-typecheck
       - semgrep
-      - codeql
     if: always()
     steps:
       - name: Verify all jobs passed
@@ -171,8 +165,7 @@ jobs:
              [ "${{ needs.python-lint.result }}" != "success" ] || \
              [ "${{ needs.python-format.result }}" != "success" ] || \
              [ "${{ needs.python-typecheck.result }}" != "success" ] || \
-             [ "${{ needs.semgrep.result }}" != "success" ] || \
-             [ "${{ needs.codeql.result }}" != "success" ]; then
+             [ "${{ needs.semgrep.result }}" != "success" ]; then
             echo "::error::One or more PR gate jobs failed."
             exit 1
           fi

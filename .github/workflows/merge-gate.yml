@@ -19,6 +19,7 @@ jobs:
 
   codeql-build:
     name: CodeQL Build (UI)
+    if: false  # Requires GHAS on private repo; enable when licensed or repo is public
     runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
     permissions:
       security-events: write
@@ -42,13 +43,12 @@ jobs:
   required-checks:
     name: Required Checks (Merge)
     runs-on: ubuntu-latest
-    needs: [pr-gate, codeql-build]
+    needs: [pr-gate]
     if: always()
     steps:
       - name: Verify merge gate passed
         run: |
-          if [ "${{ needs.pr-gate.result }}" != "success" ] || \
-             [ "${{ needs.codeql-build.result }}" != "success" ]; then
+          if [ "${{ needs.pr-gate.result }}" != "success" ]; then
             echo "::error::Merge gate failed."
             exit 1
           fi

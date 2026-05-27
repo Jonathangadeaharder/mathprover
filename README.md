@@ -62,6 +62,8 @@ your-lean-project/          # separate repo (e.g. lean-runtime-analysis)
 | `MATHPROVER_ALLOWED_ROOTS` | Colon-separated allowlist for project picker |
 | `GOEDEL_PROVER_PATH` | Local Goedel runner script (see `mathprover.toml.example`) |
 
+**Note:** CodeQL is disabled on PRs while this repo is private without a GitHub Advanced Security license. Semgrep runs on every PR; enable CodeQL in `.github/workflows/pr-gate.yml` after GHAS or going public.
+
 ## Related repos
 
 - [lean-runtime-analysis](https://github.com/VidiomTM/lean-runtime-analysis) — Lean formalization (LBTCoupling)
