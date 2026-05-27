@@ -64,9 +64,7 @@ def resolve_proof_folder(node: str, project_root: Path) -> str:
     if direct.is_dir():
         return direct.relative_to(proofs.resolve()).name
 
-    matches = sorted(
-        p for p in proofs.glob(f"{node}*") if p.is_dir() and _NODE_ID_RE.match(p.name)
-    )
+    matches = sorted(p for p in proofs.glob(f"{node}*") if p.is_dir() and _NODE_ID_RE.match(p.name))
     if len(matches) == 1:
         return matches[0].name
 

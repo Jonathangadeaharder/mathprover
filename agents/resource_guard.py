@@ -49,7 +49,12 @@ def _memory_stats_gib() -> tuple[float, float]:
 
 
 def _goedel_pids() -> list[int]:
-    patterns = ("run_prover.py", "run_pipeline.py", "Goedel-Prover-V2-32B", "goedel-prover-v2-32b/run")
+    patterns = (
+        "run_prover.py",
+        "run_pipeline.py",
+        "Goedel-Prover-V2-32B",
+        "goedel-prover-v2-32b/run",
+    )
     pids: set[int] = set()
     for pattern in patterns:
         try:

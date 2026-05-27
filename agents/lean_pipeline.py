@@ -75,7 +75,9 @@ def apply_generated_proof(original: str, model_output: str) -> str | None:
     return None
 
 
-def compile_lean_file(*, project_root: Path, lean_file: Path, timeout_s: int = 600) -> CompileResult:
+def compile_lean_file(
+    *, project_root: Path, lean_file: Path, timeout_s: int = 600
+) -> CompileResult:
     cmd = ["lake", "env", "lean", str(lean_file.resolve())]
     proc = subprocess.run(
         cmd,

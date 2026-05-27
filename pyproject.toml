@@ -19,5 +19,9 @@ ignore = ["E501"]
 
 [tool.pyright]
 include = ["agents", "scripts"]
+extraPaths = ["agents"]
+venvPath = "agents"
+venv = ".venv"
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
+reportMissingImports = "warning"

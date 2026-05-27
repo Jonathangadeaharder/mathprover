@@ -141,7 +141,9 @@ def update_run_progress(
             agent["tokensPerSec"] = tokens_per_sec
             agent["heartbeatAt"] = record.heartbeat_at
             graph["activeAgent"] = agent
-            graph_path.write_text(json.dumps(graph, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            graph_path.write_text(
+                json.dumps(graph, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
 
 
 def _phase_step(phase: str) -> int:

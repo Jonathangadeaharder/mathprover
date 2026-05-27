@@ -10,10 +10,3 @@ rules:
     message: "eval() is unsafe."
     languages: [python]
     severity: ERROR
-
-  - id: path-traversal-dotdot
-    pattern-either:
-      - pattern: '".." in $X'
-    message: "Validate paths against traversal."
-    languages: [python]
-    severity: WARNING

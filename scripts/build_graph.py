@@ -32,6 +32,7 @@ mathprover-ui/src/lib/types.ts (ProjectData).
 Usage:
     python3 scripts/build_graph.py [--root <path>] [--strict]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,11 +64,12 @@ class Decl:
     file: str
     line: int
     docblock: str
-    body: str            # source from decl head until the next decl or EOF
+    body: str  # source from decl head until the next decl or EOF
     has_sorry: bool
 
 
 # ---- helpers ----------------------------------------------------------------
+
 
 def parse_docblock(doc: str) -> dict[str, Any]:
     """Parse `@tag value` lines out of a docstring."""
@@ -198,7 +200,9 @@ def build_node(d: Decl) -> dict[str, Any] | None:
         "uses_defs": tags.get("uses-defs", []),
         "importance": float(tags.get("importance", importance_default(d.kind))),
         "difficulty": tags.get("difficulty", "medium"),
-        "confidence": float(tags["confidence"]) if "confidence" in tags else (1.0 if not d.has_sorry else 0.5),
+        "confidence": float(tags["confidence"])
+        if "confidence" in tags
+        else (1.0 if not d.has_sorry else 0.5),
         "tokens_spent": 0,
         "attempts": 0,
     }
@@ -208,7 +212,11 @@ def build_node(d: Decl) -> dict[str, Any] | None:
         node["paper_stmt"] = tags["paper-stmt"]
     if d.has_sorry:
         node["sorries"] = [
-            {"name": d.name, "desc": tags.get("description", ""), "implies": tags.get("implies", "")}
+            {
+                "name": d.name,
+                "desc": tags.get("description", ""),
+                "implies": tags.get("implies", ""),
+            }
         ]
     return node
 
@@ -297,11 +305,20 @@ def merge_run_history(project_root: Path, graph: dict[str, Any]) -> None:
 
 # ---- main -------------------------------------------------------------------
 
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--root", default=".", help="Project root (containing the .lean files).")
-    ap.add_argument("--out", default=None, help="Output path (default <root>/.mathprover/graph.json).")
-    ap.add_argument("--meta", default=None, help="Path to meta.json overlay (default <root>/.mathprover/meta.json).")
+    ap.add_argument(
+        "--out", default=None, help="Output path (default <root>/.mathprover/graph.json)."
+    )
+    ap.add_argument(
+        "--meta",
+        default=None,
+        help="Path to meta.json overlay (default <root>/.mathprover/meta.json).",
+    )
     ap.add_argument("--strict", action="store_true", help="Exit non-zero on validation errors.")
     args = ap.parse_args()
 
@@ -312,7 +329,8 @@ def main() -> int:
     # Scan all *.lean except cache/build dirs.
     EXCLUDES = {".lake", ".worktrees", ".git", "proofs", "examples"}
     lean_files = [
-        p for p in root.rglob("*.lean")
+        p
+        for p in root.rglob("*.lean")
         if not any(part in EXCLUDES for part in p.parts) and not p.name.endswith(".bak.lean")
     ]
     print(f"[build_graph] scanning {len(lean_files)} .lean files under {root}", file=sys.stderr)
@@ -354,7 +372,9 @@ def main() -> int:
     for df in definitions:
         for dep in df.get("depends_on", []) or []:
             if dep not in def_ids:
-                errors.append(f"definition {df['id']}: depends_on '{dep}' not found among definitions")
+                errors.append(
+                    f"definition {df['id']}: depends_on '{dep}' not found among definitions"
+                )
 
     # Merge with manual overlay (foundations, paperBlocks, project metadata).
     overlay: dict[str, Any] = {}
@@ -395,7 +415,7 @@ def main() -> int:
     out_path.write_text(json.dumps(graph, indent=2, ensure_ascii=False), encoding="utf-8")
     print(
         f"[build_graph] wrote {out_path}  ({len(nodes)} nodes, {len(definitions)} defs, "
-        f"{sum(1 for n in nodes if n['status']=='SORRIES')} open sorries)",
+        f"{sum(1 for n in nodes if n['status'] == 'SORRIES')} open sorries)",
         file=sys.stderr,
     )
 

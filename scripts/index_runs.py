@@ -77,7 +77,9 @@ def log_run_id(log_path: Path) -> str:
     return log_path.stem
 
 
-def backfill_run_from_log(project_root: Path, log_path: Path, proof_folder: str) -> RunRecord | None:
+def backfill_run_from_log(
+    project_root: Path, log_path: Path, proof_folder: str
+) -> RunRecord | None:
     run_id = log_run_id(log_path)
     existing = read_run(project_root, run_id)
     if existing:
@@ -105,7 +107,9 @@ def backfill_run_from_log(project_root: Path, log_path: Path, proof_folder: str)
         status = "failed"
 
     mtime = datetime.fromtimestamp(log_path.stat().st_mtime, tz=timezone.utc)
-    started = datetime.fromtimestamp(log_path.stat().st_ctime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started = datetime.fromtimestamp(log_path.stat().st_ctime, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     ended = mtime.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     record = RunRecord(
@@ -144,7 +148,9 @@ def backfill_all(project_root: Path) -> list[RunRecord]:
 def run_to_attempt(run: RunRecord) -> dict:
     started = run.started_at.replace("T", " ").replace("Z", " UTC")
     ended = (run.ended_at or run.started_at).replace("T", " ").replace("Z", " UTC")
-    result = run.result or ("PROVEN" if run.status == "ok" else "FAILED" if run.status == "failed" else "PROGRESS")
+    result = run.result or (
+        "PROVEN" if run.status == "ok" else "FAILED" if run.status == "failed" else "PROGRESS"
+    )
     return {
         "id": run.id,
         "agent": run.prover,

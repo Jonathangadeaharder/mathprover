@@ -116,7 +116,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: uv sync --directory agents
-      - run: uvx pyright
+      - run: uv run --directory agents pyright
 
   semgrep:
     name: Semgrep SAST
