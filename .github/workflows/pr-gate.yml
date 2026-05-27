@@ -116,7 +116,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: uv sync --directory agents
-      - run: uv run --directory agents pyright
+      - run: uvx pyright
 
   semgrep:
     name: Semgrep SAST
@@ -133,6 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
+      contents: read
       security-events: write
     steps:
       - uses: actions/checkout@v4

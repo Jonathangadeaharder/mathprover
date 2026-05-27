@@ -1,5 +1,5 @@
-import { existsSync, realpathSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { existsSync, realpathSync } from "node:fs";
+import { resolve, sep } from "node:path";
 
 function realpathSafe(p: string): string {
   try {
@@ -15,20 +15,16 @@ export function mathproverHome(): string {
   if (env) return realpathSafe(env);
 
   const cwd = realpathSafe(process.cwd());
-  const candidates = [
-    cwd,
-    resolve(cwd, '..'),
-    resolve(cwd, '../..'),
-  ];
+  const candidates = [cwd, resolve(cwd, ".."), resolve(cwd, "../..")];
   for (const candidate of candidates) {
-    if (existsSync(resolve(candidate, 'agents/dispatch.py'))) {
+    if (existsSync(resolve(candidate, "agents/dispatch.py"))) {
       return candidate;
     }
   }
 
   throw new Error(
-    'MATHPROVER_HOME is not set and agents/dispatch.py was not found. ' +
-      'Set MATHPROVER_HOME to the MathProver repository root.',
+    "MATHPROVER_HOME is not set and agents/dispatch.py was not found. " +
+      "Set MATHPROVER_HOME to the MathProver repository root.",
   );
 }
 

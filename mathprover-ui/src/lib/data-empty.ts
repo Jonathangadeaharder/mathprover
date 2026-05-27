@@ -1,13 +1,13 @@
-import type { Project, ProjectData } from './types';
+import type { Project, ProjectData } from "./types";
 
 const EMPTY_PROJECT: Project = {
-  name: '',
-  path: '',
-  paper: '',
-  authors: '',
-  venue: '',
-  capstone: '',
-  lastVerified: '',
+  name: "",
+  path: "",
+  paper: "",
+  authors: "",
+  venue: "",
+  capstone: "",
+  lastVerified: "",
 };
 
 export const EMPTY_PROJECT_DATA: ProjectData = {

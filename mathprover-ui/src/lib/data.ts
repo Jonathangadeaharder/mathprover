@@ -13,10 +13,10 @@ import type {
   RecentProject,
   TermLookup,
   TheoremNode,
-} from './types';
-import { project } from './stores.svelte';
+} from "./types";
+import { project } from "./stores.svelte";
 
-export { EMPTY_PROJECT_DATA } from './data-empty';
+export { EMPTY_PROJECT_DATA } from "./data-empty";
 
 const d = () => project.data;
 
@@ -26,10 +26,14 @@ function arrayProxy<T>(getter: () => T[]): T[] {
     get(_t, p) {
       const arr = getter();
       const v = Reflect.get(arr, p);
-      return typeof v === 'function' ? v.bind(arr) : v;
+      return typeof v === "function" ? v.bind(arr) : v;
     },
-    has(_t, p) { return Reflect.has(getter(), p); },
-    ownKeys() { return Reflect.ownKeys(getter()); },
+    has(_t, p) {
+      return Reflect.has(getter(), p);
+    },
+    ownKeys() {
+      return Reflect.ownKeys(getter());
+    },
     getOwnPropertyDescriptor(_t, p) {
       return Object.getOwnPropertyDescriptor(getter(), p);
     },
@@ -38,9 +42,15 @@ function arrayProxy<T>(getter: () => T[]): T[] {
 
 function recordProxy<V>(getter: () => Record<string, V>): Record<string, V> {
   return new Proxy({} as Record<string, V>, {
-    get(_t, p) { return Reflect.get(getter(), p); },
-    has(_t, p) { return Reflect.has(getter(), p); },
-    ownKeys() { return Reflect.ownKeys(getter()); },
+    get(_t, p) {
+      return Reflect.get(getter(), p);
+    },
+    has(_t, p) {
+      return Reflect.has(getter(), p);
+    },
+    ownKeys() {
+      return Reflect.ownKeys(getter());
+    },
     getOwnPropertyDescriptor(_t, p) {
       const desc = Object.getOwnPropertyDescriptor(getter(), p);
       if (desc) desc.configurable = true;
@@ -91,8 +101,12 @@ export const activeAgent = (): LiveAgent | null => d().activeAgent;
 
 // Back-compat names used in older imports.
 export const SAMPLE_PROJECT = new Proxy({} as Project, {
-  get(_t, p) { return Reflect.get(d().project, p); },
-  ownKeys() { return Reflect.ownKeys(d().project); },
+  get(_t, p) {
+    return Reflect.get(d().project, p);
+  },
+  ownKeys() {
+    return Reflect.ownKeys(d().project);
+  },
   getOwnPropertyDescriptor(_t, p) {
     const desc = Object.getOwnPropertyDescriptor(d().project, p);
     if (desc) desc.configurable = true;
@@ -105,7 +119,9 @@ export const ACTIVE_AGENT = new Proxy({} as LiveAgent, {
     const a = d().activeAgent;
     return a ? Reflect.get(a, p) : undefined;
   },
-  ownKeys() { return d().activeAgent ? Reflect.ownKeys(d().activeAgent!) : []; },
+  ownKeys() {
+    return d().activeAgent ? Reflect.ownKeys(d().activeAgent!) : [];
+  },
   getOwnPropertyDescriptor(_t, p) {
     const a = d().activeAgent;
     if (!a) return undefined;

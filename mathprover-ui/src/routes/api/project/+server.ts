@@ -1,7 +1,7 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { enrichGraph } from '$lib/server/project';
-import { ProjectRootError, resolveRootFromRequest } from '$lib/server/dispatch';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { enrichGraph } from "$lib/server/project";
+import { ProjectRootError, resolveRootFromRequest } from "$lib/server/dispatch";
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
@@ -10,8 +10,14 @@ export const GET: RequestHandler = async ({ url }) => {
     return json({ data, projectRoot: root, error: null });
   } catch (err) {
     if (err instanceof ProjectRootError) {
-      return json({ data: null, projectRoot: '', error: err.message }, { status: 400 });
+      return json(
+        { data: null, projectRoot: "", error: err.message },
+        { status: 400 },
+      );
     }
-    return json({ data: null, projectRoot: '', error: (err as Error).message }, { status: 500 });
+    return json(
+      { data: null, projectRoot: "", error: (err as Error).message },
+      { status: 500 },
+    );
   }
 };

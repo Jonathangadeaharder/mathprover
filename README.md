@@ -8,16 +8,10 @@ graph indexing, and run registry. Works against any Lean project that provides
 
 ```bash
 cp .env.example .env   # edit paths, then: source .env
-
-# UI
-cd mathprover-ui && pnpm install && pnpm dev
-
-# Python agents
-cd agents && uv sync
-uv run python dispatch.py --root "$MATHPROVER_PROJECT_PATH" --node <proof-folder> --prover auto
-
-# Reindex a Lean project's graph (from anywhere)
-python3 scripts/reindex_project.py "$MATHPROVER_PROJECT_PATH"
+make agents-sync
+make reindex           # Lean project graph
+make ui                # workbench
+make dispatch NODE=L661_coea_sel_measure_prob
 ```
 
 Open `http://localhost:5173/workspace?project=/path/to/lean-project`.

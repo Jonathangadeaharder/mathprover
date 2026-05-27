@@ -1,5 +1,5 @@
-import { fetchGoedelStatus, fetchProject, subscribeRunStream } from './api';
-import { setProjectData, app, project } from './stores.svelte';
+import { fetchGoedelStatus, fetchProject, subscribeRunStream } from "./api";
+import { setProjectData, app, project } from "./stores.svelte";
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let streamCleanup: (() => void) | null = null;
@@ -39,7 +39,7 @@ export function stopLivePolling() {
 export function attachRunStream(runId: string) {
   if (!app.projectRoot) return;
   streamCleanup?.();
-  app.liveLogText = '';
+  app.liveLogText = "";
   streamCleanup = subscribeRunStream(app.projectRoot, runId, {
     onLog: (chunk) => {
       app.liveLogText += chunk;

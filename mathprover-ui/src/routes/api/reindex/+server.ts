@@ -1,14 +1,14 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { enrichGraph, runPythonText } from '$lib/server/project';
-import { ProjectRootError, resolveRootFromRequest } from '$lib/server/dispatch';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { enrichGraph, runPythonText } from "$lib/server/project";
+import { ProjectRootError, resolveRootFromRequest } from "$lib/server/dispatch";
 
 export const POST: RequestHandler = async ({ url }) => {
   try {
     const root = resolveRootFromRequest(url);
-    const projectReindex = resolve(root, 'scripts/reindex_graph.py');
+    const projectReindex = resolve(root, "scripts/reindex_graph.py");
 
     if (existsSync(projectReindex)) {
       const reindex = await runPythonText(root, [projectReindex]);
@@ -21,23 +21,23 @@ export const POST: RequestHandler = async ({ url }) => {
       }
       return json({
         ok: reindex.code === 0,
-        backfill: '',
+        backfill: "",
         build: reindex.out.trim() || reindex.err.trim(),
         data,
         error,
       });
     }
 
-    const bootstrap = resolve(root, 'scripts/bootstrap_graph.py');
+    const bootstrap = resolve(root, "scripts/bootstrap_graph.py");
     const buildArgs = existsSync(bootstrap)
       ? [bootstrap]
-      : ['scripts/build_graph.py', '--root', root];
+      : ["scripts/build_graph.py", "--root", root];
 
     const backfill = await runPythonText(root, [
-      'scripts/index_runs.py',
-      '--root',
+      "scripts/index_runs.py",
+      "--root",
       root,
-      '--backfill',
+      "--backfill",
     ]);
     const build = await runPythonText(root, buildArgs);
     let data = null;
@@ -55,7 +55,8 @@ export const POST: RequestHandler = async ({ url }) => {
       error,
     });
   } catch (err) {
-    if (err instanceof ProjectRootError) return json({ error: err.message }, { status: 400 });
+    if (err instanceof ProjectRootError)
+      return json({ error: err.message }, { status: 400 });
     throw err;
   }
 };

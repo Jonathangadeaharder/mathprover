@@ -1,10 +1,12 @@
-import type { ProjectData, RunRecord } from './types';
+import type { ProjectData, RunRecord } from "./types";
 
 function qs(projectRoot: string): string {
   return `?project=${encodeURIComponent(projectRoot)}`;
 }
 
-export async function fetchProject(projectRoot: string): Promise<ProjectData | null> {
+export async function fetchProject(
+  projectRoot: string,
+): Promise<ProjectData | null> {
   const res = await fetch(`/api/project${qs(projectRoot)}`);
   if (!res.ok) return null;
   const body = await res.json();
@@ -32,14 +34,25 @@ export async function postDispatch(
   nodeId: string,
   prover: string,
   skipVerify = false,
-): Promise<{ runId: string; prover: string; reason: string; error?: string } | null> {
+): Promise<{
+  runId: string;
+  prover: string;
+  reason: string;
+  error?: string;
+} | null> {
   const res = await fetch(`/api/dispatch${qs(projectRoot)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nodeId, prover, skipVerify }),
   });
   const body = await res.json();
-  if (!res.ok) return { runId: '', prover: '', reason: '', error: body.error ?? 'dispatch failed' };
+  if (!res.ok)
+    return {
+      runId: "",
+      prover: "",
+      reason: "",
+      error: body.error ?? "dispatch failed",
+    };
   return body;
 }
 
@@ -50,14 +63,18 @@ export async function fetchRuns(projectRoot: string): Promise<RunRecord[]> {
   return body.runs as RunRecord[];
 }
 
-export async function fetchGoedelStatus(projectRoot: string): Promise<{ locked: boolean; pid?: string }> {
+export async function fetchGoedelStatus(
+  projectRoot: string,
+): Promise<{ locked: boolean; pid?: string }> {
   const res = await fetch(`/api/status/goedel${qs(projectRoot)}`);
   if (!res.ok) return { locked: false };
   return res.json();
 }
 
-export async function reindexProject(projectRoot: string): Promise<ProjectData | null> {
-  const res = await fetch(`/api/reindex${qs(projectRoot)}`, { method: 'POST' });
+export async function reindexProject(
+  projectRoot: string,
+): Promise<ProjectData | null> {
+  const res = await fetch(`/api/reindex${qs(projectRoot)}`, { method: "POST" });
   if (!res.ok) return null;
   const body = await res.json();
   return body.data as ProjectData | null;
@@ -73,11 +90,11 @@ export function subscribeRunStream(
   },
 ): () => void {
   const es = new EventSource(`/api/runs/${runId}/stream${qs(projectRoot)}`);
-  es.addEventListener('log', (ev) => {
+  es.addEventListener("log", (ev) => {
     const data = JSON.parse((ev as MessageEvent).data) as { chunk: string };
     handlers.onLog?.(data.chunk);
   });
-  es.addEventListener('done', (ev) => {
+  es.addEventListener("done", (ev) => {
     const data = JSON.parse((ev as MessageEvent).data) as RunRecord;
     handlers.onDone?.(data);
     es.close();

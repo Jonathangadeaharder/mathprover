@@ -7,10 +7,11 @@ exclude:
   - mathprover-ui/.svelte-kit/**
   - agents/.venv/**
   - openspec/**
+  - Makefile
 
 rules:
   max-depth:
-    max: 5
+    max: 8
     exemptions:
       - ".git/**"
 

@@ -1,13 +1,13 @@
 export type NodeStatus =
-  | 'PROVEN'
-  | 'SORRIES'
-  | 'PROGRESS'
-  | 'FAILED'
-  | 'BLOCKED'
-  | 'READY'
-  | 'UNEXPLORED';
+  | "PROVEN"
+  | "SORRIES"
+  | "PROGRESS"
+  | "FAILED"
+  | "BLOCKED"
+  | "READY"
+  | "UNEXPLORED";
 
-export type AttemptResult = 'PROVEN' | 'PARTIAL' | 'PROGRESS' | 'FAILED';
+export type AttemptResult = "PROVEN" | "PARTIAL" | "PROGRESS" | "FAILED";
 
 export interface Attempt {
   id: string;
@@ -55,10 +55,17 @@ export interface TheoremNode {
   sorries?: Sorry[];
   attemptsLog?: Attempt[];
   proof_folder?: string;
-  worker_state?: 'todo' | 'in_progress' | 'done' | string;
+  worker_state?: "todo" | "in_progress" | "done" | string;
 }
 
-export type DefinitionKind = 'structure' | 'def' | 'inductive' | 'abbrev' | 'instance' | 'class' | 'notation';
+export type DefinitionKind =
+  | "structure"
+  | "def"
+  | "inductive"
+  | "abbrev"
+  | "instance"
+  | "class"
+  | "notation";
 
 export interface Definition {
   id: string;
@@ -127,7 +134,7 @@ export interface RunRecord {
   proof_folder: string;
   prover: string;
   route_reason: string;
-  status: 'pending' | 'running' | 'ok' | 'failed' | 'error';
+  status: "pending" | "running" | "ok" | "failed" | "error";
   started_at: string;
   ended_at?: string | null;
   log_path: string;
@@ -141,12 +148,12 @@ export interface RunRecord {
   heartbeat_at?: string | null;
 }
 
-export type FoundationStatus = 'AXIOM' | 'PARTIAL' | 'MECHANIZED' | 'PLANNED';
+export type FoundationStatus = "AXIOM" | "PARTIAL" | "MECHANIZED" | "PLANNED";
 
 export interface FoundationSubgoal {
   id: string;
   desc: string;
-  status: 'todo' | 'in_progress' | 'done';
+  status: "todo" | "in_progress" | "done";
   lean_name?: string;
   effort?: string;
 }
@@ -169,13 +176,20 @@ export interface Foundation {
 }
 
 export type PaperBlock =
-  | { kind: 'heading'; text: string }
-  | { kind: 'para'; text: string }
-  | { kind: 'thm'; label: string; nodeId: string; text: string; math?: string; after?: string };
+  | { kind: "heading"; text: string }
+  | { kind: "para"; text: string }
+  | {
+      kind: "thm";
+      label: string;
+      nodeId: string;
+      text: string;
+      math?: string;
+      after?: string;
+    };
 
 export type LeanBlock =
-  | { kind: 'comment'; text: string }
-  | { kind: 'code'; nodeId: string; lines: string[] };
+  | { kind: "comment"; text: string }
+  | { kind: "code"; nodeId: string; lines: string[] };
 
 export interface TermInfo {
   type: string;
@@ -200,18 +214,18 @@ export interface ProjectData {
 }
 
 export type Route =
-  | 'graph'
-  | 'frontier'
-  | 'paper-lean'
-  | 'agents'
-  | 'failures'
-  | 'foundations'
-  | 'definitions';
+  | "graph"
+  | "frontier"
+  | "paper-lean"
+  | "agents"
+  | "failures"
+  | "foundations"
+  | "definitions";
 
 export interface Tweaks {
-  theme: 'dark' | 'light';
-  graph_layout: 'dag' | 'radial' | 'force';
-  density: 'compact' | 'comfortable';
+  theme: "dark" | "light";
+  graph_layout: "dag" | "radial" | "force";
+  density: "compact" | "comfortable";
   accent: string;
   show_proven: boolean;
 }
