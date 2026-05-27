@@ -3,4 +3,8 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [sveltekit()],
+  server: {
+    host: true,
+    port: Number(process.env.MATHPROVER_PORT ?? 5173),
+  },
 });

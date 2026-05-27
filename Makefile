@@ -1,5 +1,7 @@
 # MathProver — common tasks
 
+.DEFAULT_GOAL := default
+
 MATHPROVER_HOME ?= $(CURDIR)
 MATHPROVER_PROJECT_PATH ?= $(abspath ../lean-runtime-analysis)
 NODE ?=
@@ -12,9 +14,14 @@ endif
 
 export MATHPROVER_HOME MATHPROVER_PROJECT_PATH
 
-.PHONY: help reindex ui dispatch agents-sync ui-check ui-build format
+.PHONY: default help reindex ui dispatch agents-sync ui-check ui-build format
+
+default:
+	@$(MAKE) -C ..
 
 help:
+	@echo "Tip: from phd/ run \`make\` once — Meridian + MathProver + reindex."
+	@echo ""
 	@echo "Targets:"
 	@echo "  make reindex              Reindex Lean project graph (MATHPROVER_PROJECT_PATH)"
 	@echo "  make ui                   Start SvelteKit workbench"
