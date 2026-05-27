@@ -1,0 +1,19 @@
+rules:
+  - id: python-subprocess-shell-true
+    pattern: subprocess.run(..., shell=True, ...)
+    message: "Avoid shell=True in subprocess calls."
+    languages: [python]
+    severity: ERROR
+
+  - id: python-eval
+    pattern: eval(...)
+    message: "eval() is unsafe."
+    languages: [python]
+    severity: ERROR
+
+  - id: path-traversal-dotdot
+    pattern-either:
+      - pattern: '".." in $X'
+    message: "Validate paths against traversal."
+    languages: [python]
+    severity: WARNING

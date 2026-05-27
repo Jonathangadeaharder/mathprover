@@ -1,0 +1,16 @@
+.DS_Store
+*.swp
+*.bak
+node_modules/
+.svelte-kit/
+build/
+dist/
+agents/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+coverage.xml
+.ruff_cache/
+.env
+.env.*

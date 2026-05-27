@@ -1,0 +1,34 @@
+root: true
+
+exclude:
+  - .git/**
+  - "**/.DS_Store"
+  - mathprover-ui/node_modules/**
+  - mathprover-ui/.svelte-kit/**
+  - agents/.venv/**
+  - openspec/**
+
+rules:
+  max-depth:
+    max: 5
+    exemptions:
+      - ".git/**"
+
+  max-files-in-dir:
+    max: 40
+    exemptions:
+      - ".git/**"
+      - "mathprover-ui/src/**"
+
+  file-existence:
+    "README.md":
+      rule: "exists:1"
+    "mathprover-ui/package.json":
+      rule: "exists:1"
+    "agents/pyproject.toml":
+      rule: "exists:1"
+
+  disallowed-patterns:
+    - "*.tmp"
+    - "*.bak"
+    - ".DS_Store"
