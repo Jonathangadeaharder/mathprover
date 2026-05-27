@@ -1,0 +1,24 @@
+name: CodeQL Advanced Security
+
+# Disabled until GitHub Advanced Security is licensed for VidiomTM private repos,
+# or this repository is made public. Semgrep covers PR SAST in the meantime.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v3

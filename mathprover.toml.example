@@ -1,0 +1,28 @@
+# Copy to your Lean project root as mathprover.toml and customize routing.
+
+[resources]
+max_concurrent_goedel = 1
+min_free_memory_gib = 12.0
+forbid_parallel_dispatch = true
+
+[provers.goedel]
+type = "local"
+command = "${GOEDEL_PROVER_PATH}"
+max_attempts = 4
+max_tokens = 32768
+correction_rounds = 2
+
+[provers.aristotle]
+type = "cloud"
+command = "aristotle"
+requires_env = ["ARISTOTLE_API_KEY"]
+
+[routing]
+default_leaf = "goedel"
+default_capstone = "aristotle"
+escalate_after_failures = 3
+capstone_node = "my_capstone_node"
+
+[toolchain]
+lean = "leanprover/lean4:v4.28.0"
+mathlib = "v4.28.0"
