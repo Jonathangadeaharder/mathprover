@@ -6,5 +6,6 @@ export default defineConfig({
   server: {
     host: true,
     port: Number(process.env.MATHPROVER_PORT ?? 5173),
+    allowedHosts: true,
   },
 });
