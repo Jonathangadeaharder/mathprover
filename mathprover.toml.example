@@ -24,5 +24,7 @@ escalate_after_failures = 3
 capstone_node = "my_capstone_node"
 
 [toolchain]
+# Informational only — not parsed by MathProver agents.
+# Declared here for reference by the Lean project's CI and human readers.
 lean = "leanprover/lean4:v4.28.0"
 mathlib = "v4.28.0"
