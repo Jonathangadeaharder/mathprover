@@ -1,16 +1,27 @@
 # Copy to your Lean project root as mathprover.toml and customize routing.
 
 [resources]
-max_concurrent_goedel = 1
+max_concurrent_goedel = 0
 min_free_memory_gib = 12.0
 forbid_parallel_dispatch = true
 
-[provers.goedel]
-type = "local"
-command = "${GOEDEL_PROVER_PATH}"
+[provers.oprover]
+type = "local_openai"
+base_url = "http://localhost:1234/v1"
+model = "oprover-8b"
+max_attempts = 6
+max_tokens = 8192
+correction_rounds = 3
+temperature = 0.2
+
+[provers.qwen]
+type = "local_openai"
+base_url = "http://127.0.0.1:8000/v1"
+model = "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed"
 max_attempts = 4
-max_tokens = 32768
-correction_rounds = 2
+max_tokens = 12288
+correction_rounds = 3
+temperature = 0.3
 
 [provers.aristotle]
 type = "cloud"
@@ -18,7 +29,8 @@ command = "aristotle"
 requires_env = ["ARISTOTLE_API_KEY"]
 
 [routing]
-default_leaf = "goedel"
+default_leaf = "oprover"
+default_mid = "qwen"
 default_capstone = "aristotle"
 escalate_after_failures = 3
 capstone_node = "my_capstone_node"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI: dispatch a proof node to Goedel or Aristotle."""
+"""CLI: dispatch a proof node to oprover, qwen, or Aristotle."""
 
 from __future__ import annotations
 
@@ -17,9 +17,10 @@ if str(AGENTS_DIR) not in sys.path:
     sys.path.insert(0, str(AGENTS_DIR))
 
 from backends.aristotle import run_aristotle  # noqa: E402
-from backends.goedel import run_goedel  # noqa: E402
+from backends.lmstudio import run_lmstudio  # noqa: E402
 from config import MathProverConfig, load_config  # noqa: E402
-from resource_guard import ResourceGuardError, ResourceLimits, goedel_exclusive_lock  # noqa: E402
+from lean_pipeline import final_verify_attempt  # noqa: E402
+from rate_limit import check_and_record  # noqa: E402
 from router import select_prover  # noqa: E402
 from run_registry import (  # noqa: E402
     RunRecord,
@@ -93,6 +94,18 @@ def resolve_proof_folder(node: str, project_root: Path) -> str:
 
 def timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def refute_node(project_root: Path, folder: str, rounds: int) -> str | None:
+    """Diagnose-before-grind (Aristotle's LBT lesson): try to DISPROVE the node's statement
+    locally before spending prover/cloud budget. Returns a verified counterexample, or None."""
+    import pipeline  # local OProver loop + negation-goal builder
+
+    attempt_file = project_root / "proofs" / folder / "attempt.lean"
+    if not attempt_file.exists():
+        raise FileNotFoundError(f"Missing attempt file: {attempt_file}")
+    pipeline.init_log(project_root)
+    return pipeline.refute(attempt_file.read_text(encoding="utf-8"), project_root, rounds=rounds)
 
 
 def verify_build(project_root: Path, log_path: Path) -> tuple[bool, str]:
@@ -196,25 +209,19 @@ def dispatch_with_config(
     print(f"log={log_path}")
 
     try:
-        if prover_name == "goedel":
-            limits = ResourceLimits(
-                max_concurrent_goedel=config.resources.max_concurrent_goedel,
-                min_free_memory_gib=config.resources.min_free_memory_gib,
+        if prover_cfg.type in ("lmstudio", "local_openai", "local"):
+            # oprover / qwen — OpenAI-compatible local server (LM Studio or MTPLX). Sound gate
+            # (lake-clean AND sorry-free) lives in the backend. No MLX exclusive lock needed.
+            result = run_lmstudio(
+                config=prover_cfg,
+                attempt_file=attempt_file,
+                proof_dir=proof_dir,
+                project_root=root,
+                log_path=log_path,
+                max_tokens=max_tokens,
             )
-            try:
-                with goedel_exclusive_lock(root, limits):
-                    result = run_goedel(
-                        config=prover_cfg,
-                        attempt_file=attempt_file,
-                        proof_dir=proof_dir,
-                        project_root=root,
-                        log_path=log_path,
-                        max_tokens=max_tokens,
-                        resource_limits=limits,
-                    )
-            except ResourceGuardError as exc:
-                raise RuntimeError(str(exc)) from exc
-        elif prover_name == "aristotle":
+        elif prover_cfg.type == "cloud" or prover_name == "aristotle":
+            check_and_record(root)  # enforce Aristotle 60/min, 1000/day before submitting
             result = run_aristotle(
                 config=prover_cfg,
                 project_root=root,
@@ -223,11 +230,20 @@ def dispatch_with_config(
                 log_path=log_path,
             )
         else:
-            raise ValueError(f"Unsupported prover: {prover_name}")
+            raise ValueError(f"Unsupported prover type {prover_cfg.type!r} for {prover_name!r}")
 
         verify_ok = True
+        final_gate_message = ""
         if not skip_verify:
             verify_ok, _ = verify_build(root, log_path)
+            if verify_ok and result.success:
+                verify_ok, final_gate_message = final_verify_attempt(
+                    project_root=root,
+                    lean_file=attempt_file,
+                )
+                with log_path.open("a", encoding="utf-8") as log:
+                    log.write("\n--- final proof gate ---\n")
+                    log.write(final_gate_message + "\n")
 
         ok = result.success and verify_ok
         append_status(proof_dir, prover=prover_name, ok=ok, log_rel=log_rel)
@@ -264,19 +280,34 @@ def main() -> None:
     parser.add_argument("--node", required=True, help="Node id or proofs/ folder name")
     parser.add_argument(
         "--prover",
-        choices=["goedel", "aristotle", "auto"],
+        choices=["oprover", "qwen", "aristotle", "auto"],
         default="auto",
         help="Prover backend (default: auto via mathprover.toml)",
     )
-    parser.add_argument("--max-tokens", type=int, default=None, help="Goedel token limit")
+    parser.add_argument("--max-tokens", type=int, default=None, help="model token limit")
     parser.add_argument("--skip-verify", action="store_true", help="Skip lake build verify")
     parser.add_argument("--run-id", default=None, help="Pre-assigned run id (for async dispatch)")
+    parser.add_argument(
+        "--refute-first", type=int, default=0, metavar="N",
+        help="Before dispatching, spend N local rounds trying to DISPROVE the node; "
+             "if a counterexample is found, report FALSE and do not run the prover.",
+    )
     args = parser.parse_args()
 
     override = None if args.prover == "auto" else args.prover
     root = Path(args.root).resolve() if args.root else None
     try:
         config = load_config(root)
+        if args.refute_first:
+            folder = resolve_proof_folder(args.node, config.project_root)
+            cex = refute_node(config.project_root, folder, args.refute_first)
+            if cex:
+                append_status(config.project_root / "proofs" / folder,
+                              prover="refute", ok=False, log_rel="(local refutation)")
+                print("RESULT: FALSE — counterexample found; statement is not provable as stated. "
+                      "Not dispatching the prover.")
+                raise SystemExit(3)
+            print("refute-first: no counterexample within budget; dispatching prover.")
         code = dispatch_with_config(
             config,
             args.node,

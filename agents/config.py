@@ -31,6 +31,8 @@ class ProverConfig:
     name: str
     type: str
     command: str
+    model: str = ""
+    base_url: str = ""
     max_attempts: int = 4
     max_tokens: int = 32768
     correction_rounds: int = 2
@@ -52,6 +54,7 @@ class RoutingConfig:
     leaves: list[dict[str, str]]
     second_wave: list[dict[str, Any]]
     capstone: list[dict[str, Any]]
+    default_mid: str = ""  # 3-tier escalation: leaf -> mid -> capstone (empty = 2-tier)
 
 
 @dataclass
@@ -98,7 +101,9 @@ def load_config(project_root: Path | None = None) -> MathProverConfig:
         provers[name] = ProverConfig(
             name=name,
             type=block["type"],
-            command=expand_config_value(block["command"]),
+            command=expand_config_value(block.get("command", "")),
+            model=str(block.get("model", "")),
+            base_url=expand_config_value(block.get("base_url", "")) if block.get("base_url") else "",
             max_attempts=int(block.get("max_attempts", 4)),
             max_tokens=int(block.get("max_tokens", 32768)),
             correction_rounds=int(block.get("correction_rounds", 2)),
@@ -115,6 +120,7 @@ def load_config(project_root: Path | None = None) -> MathProverConfig:
     routing = RoutingConfig(
         default_leaf=routing_raw["default_leaf"],
         default_capstone=routing_raw["default_capstone"],
+        default_mid=routing_raw.get("default_mid", ""),
         escalate_after_failures=int(routing_raw["escalate_after_failures"]),
         capstone_node=routing_raw["capstone_node"],
         leaves=list(routing_raw.get("leaves", [])),
