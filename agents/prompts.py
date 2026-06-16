@@ -1,10 +1,10 @@
-"""Prompt builders for Goedel and Aristotle (translate published proofs)."""
+"""Prompt builders for local OpenAI-compatible and Aristotle proof backends."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-GOEDEL_COMPLETION_TEMPLATE = """\
+LOCAL_COMPLETION_TEMPLATE = """\
 Complete the following Lean 4 code:
 
 ```lean4
@@ -13,7 +13,7 @@ Complete the following Lean 4 code:
 {paper_section}Before producing the Lean 4 code to formally prove the given theorem, provide a detailed proof plan outlining the main proof steps and strategies.
 The plan should highlight key ideas, intermediate lemmas, and proof structures that will guide the construction of the final formal proof."""
 
-GOEDEL_CORRECTION_TEMPLATE = """\
+LOCAL_CORRECTION_TEMPLATE = """\
 The proof (Round {round_index}) is not correct. Following is the compilation error message from the Lean 4 compiler:
 
 {error_message}
@@ -41,14 +41,14 @@ def paper_section_for_goedel(paper_text: str) -> str:
 
 
 def build_goedel_initial_prompt(formal_statement: str, paper_text: str) -> str:
-    return GOEDEL_COMPLETION_TEMPLATE.format(
+    return LOCAL_COMPLETION_TEMPLATE.format(
         formal_statement=formal_statement.strip(),
         paper_section=paper_section_for_goedel(paper_text),
     )
 
 
 def build_goedel_correction_message(*, round_index: int, error_message: str) -> str:
-    return GOEDEL_CORRECTION_TEMPLATE.format(
+    return LOCAL_CORRECTION_TEMPLATE.format(
         round_index=round_index,
         error_message=error_message.strip(),
     )

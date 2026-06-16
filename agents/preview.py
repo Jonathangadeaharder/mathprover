@@ -37,7 +37,7 @@ def main() -> None:
         "prover",
         nargs="?",
         default="auto",
-        help="auto|goedel|aristotle",
+        help="auto|oprover|qwen|aristotle",
     )
     parser.add_argument(
         "--root",
