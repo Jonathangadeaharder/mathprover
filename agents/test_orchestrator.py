@@ -231,6 +231,247 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual("open", loaded.nodes["root"].status)
         self.assertEqual(["root"], loaded.frontier())
 
+    @patch("orchestrator.residency")
+    @patch("orchestrator.AG")
+    @patch("orchestrator.axiom_check")
+    @patch("orchestrator.assemble_parent")
+    @patch("orchestrator.P.verify_split")
+    @patch("orchestrator.P.propose_split")
+    def test_deep_branching_three_levels(
+        self,
+        mock_propose_split: MagicMock,
+        mock_verify_split: MagicMock,
+        mock_assemble_parent: MagicMock,
+        mock_axiom_check: MagicMock,
+        mock_ag: MagicMock,
+        mock_residency: MagicMock,
+    ) -> None:
+        mock_propose_split.return_value = {}
+        mock_verify_split.return_value = True
+        mock_assemble_parent.return_value = (True, "assembly clean")
+        mock_axiom_check.return_value.combined = "depends on axioms: [propext, Classical.choice]"
+        mock_ag._axiom_backed.return_value = False
+        mock_ag._gather_context.return_value = None
+
+        plan_call_count = {"n": 0}
+
+        def plan_side_effect(ctx, feedback):
+            plan_call_count["n"] += 1
+            node = ctx.node
+            if node == "root":
+                return {
+                    "mode": "prove",
+                    "direct": False,
+                    "leaves": [
+                        {"name": "L", "goal_spec": "theorem L : True := by sorry"},
+                        {"name": "R", "goal_spec": "theorem R : True := by sorry"},
+                    ],
+                    "parent_proof": "by exact L R",
+                }
+            elif node in ("root__L", "root__R"):
+                child = "A" if node == "root__L" else "B"
+                return {
+                    "mode": "prove",
+                    "direct": False,
+                    "leaves": [
+                        {"name": child, "goal_spec": f"theorem {child} : True := by sorry"},
+                    ],
+                    "parent_proof": f"by exact {child}",
+                }
+            else:
+                return {
+                    "mode": "prove",
+                    "direct": True,
+                    "leaves": [{"name": node, "goal_spec": ctx.goal_src, "sketch": ""}],
+                    "parent_proof": "",
+                }
+
+        mock_ag.plan_phase.side_effect = plan_side_effect
+
+        def prove_side_effect(ctx, plan, deadline):
+            if plan.get("direct"):
+                return "DONE-CANDIDATE", {ctx.node: "trivial"}, ""
+            return "DONE-CANDIDATE", {}, ""
+
+        mock_ag.prove_phase.side_effect = prove_side_effect
+        mock_ag.assemble_and_gate.return_value = (False, "stuck leaf -> decompose")
+
+        dag = D.DAG(
+            goal="root",
+            nodes={
+                "root": D.Node(
+                    id="root",
+                    statement="theorem root : True := by sorry",
+                    status="open",
+                    folder="proofs/root",
+                ),
+            },
+        )
+
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=10, allow_research=False)
+
+        self.assertEqual("planning", dag.nodes["root"].status)
+        self.assertIn("root__L", dag.nodes)
+        self.assertIn("root__R", dag.nodes)
+
+        for cid in ("root__L", "root__R"):
+            child = dag.nodes[cid]
+            self.assertIn("planning", [child.status, "open"])
+            grandchild_key = f"{cid}__A" if cid == "root__L" else f"{cid}__B"
+            if grandchild_key in dag.nodes:
+                self.assertLessEqual(dag.nodes[grandchild_key].depth, 2)
+
+        for cid in list(dag.nodes):
+            if dag.nodes[cid].status in ("open", "planning") and not dag.nodes[cid].deps:
+                dag.nodes[cid].status = "proved"
+                dag.nodes[cid].axioms = D.STD_AXIOMS
+                dag.nodes[cid].proof_path = f"proofs/{cid}/attempt.lean"
+
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=10, allow_research=False)
+
+        if "root__L" in dag.nodes and dag.nodes["root__L"].deps:
+            for gc in dag.nodes["root__L"].deps:
+                if gc in dag.nodes:
+                    dag.nodes[gc].status = "proved"
+                    dag.nodes[gc].axioms = D.STD_AXIOMS
+                    dag.nodes[gc].proof_path = f"proofs/{gc}/attempt.lean"
+        if "root__R" in dag.nodes and dag.nodes["root__R"].deps:
+            for gc in dag.nodes["root__R"].deps:
+                if gc in dag.nodes:
+                    dag.nodes[gc].status = "proved"
+                    dag.nodes[gc].axioms = D.STD_AXIOMS
+                    dag.nodes[gc].proof_path = f"proofs/{gc}/attempt.lean"
+
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=10, allow_research=False)
+        self.assertEqual("proved", dag.nodes["root"].status)
+
+    @patch("orchestrator.residency")
+    @patch("orchestrator.AG")
+    @patch("orchestrator.axiom_check")
+    @patch("orchestrator.assemble_parent")
+    @patch("orchestrator.P.verify_split")
+    @patch("orchestrator.P.propose_split")
+    def test_blocked_then_retry_assembly(
+        self,
+        mock_propose_split: MagicMock,
+        mock_verify_split: MagicMock,
+        mock_assemble_parent: MagicMock,
+        mock_axiom_check: MagicMock,
+        mock_ag: MagicMock,
+        mock_residency: MagicMock,
+    ) -> None:
+        mock_propose_split.return_value = {}
+        mock_verify_split.return_value = True
+        mock_axiom_check.return_value.combined = "depends on axioms: [propext]"
+        mock_ag._axiom_backed.return_value = False
+        mock_ag._gather_context.return_value = None
+
+        assembly_calls = {"n": 0}
+
+        def assemble_side_effect(root, dag, parent_id):
+            assembly_calls["n"] += 1
+            if assembly_calls["n"] <= 1:
+                return False, "assembly mismatch"
+            return True, "assembly clean"
+
+        mock_assemble_parent.side_effect = assemble_side_effect
+
+        def plan_side_effect(ctx, feedback):
+            if ctx.node == "parent":
+                return {
+                    "mode": "prove",
+                    "direct": False,
+                    "leaves": [
+                        {"name": "c1", "goal_spec": "theorem c1 : True := by sorry"},
+                    ],
+                    "parent_proof": "by exact c1",
+                }
+            return {
+                "mode": "prove",
+                "direct": True,
+                "leaves": [{"name": ctx.node, "goal_spec": ctx.goal_src}],
+                "parent_proof": "",
+            }
+
+        mock_ag.plan_phase.side_effect = plan_side_effect
+        mock_ag.prove_phase.return_value = ("DONE-CANDIDATE", {}, "")
+        mock_ag.assemble_and_gate.return_value = (False, "stuck -> decompose")
+
+        dag = D.DAG(
+            goal="parent",
+            nodes={
+                "parent": D.Node(
+                    id="parent",
+                    statement="theorem parent : True := by sorry",
+                    status="open",
+                    folder="proofs/parent",
+                ),
+            },
+        )
+
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=3, allow_research=False)
+
+        child_id = "parent__c1"
+        self.assertIn(child_id, dag.nodes)
+        dag.nodes[child_id].status = "proved"
+        dag.nodes[child_id].axioms = D.STD_AXIOMS
+        dag.nodes[child_id].proof_path = f"proofs/{child_id}/attempt.lean"
+
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=3, allow_research=False)
+
+        self.assertEqual("open", dag.nodes["parent"].status)
+
+        mock_assemble_parent.side_effect = lambda r, d, p: (True, "fixed assembly")
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=3, allow_research=False)
+
+        self.assertEqual("proved", dag.nodes["parent"].status)
+
+    @patch("orchestrator.residency")
+    @patch("orchestrator.AG")
+    @patch("orchestrator.P.verify_split")
+    @patch("orchestrator.P.propose_split")
+    def test_max_depth_guard_blocks_decomposition(
+        self,
+        mock_propose_split: MagicMock,
+        mock_verify_split: MagicMock,
+        mock_ag: MagicMock,
+        mock_residency: MagicMock,
+    ) -> None:
+        mock_propose_split.return_value = {
+            "sublemmas": [{"name": "sub", "statement": "theorem sub : True := by sorry"}],
+            "parent_proof": "by exact sub",
+        }
+        mock_verify_split.return_value = True
+        mock_ag._axiom_backed.return_value = False
+        mock_ag._gather_context.return_value = None
+        mock_ag.plan_phase.return_value = {
+            "mode": "prove",
+            "direct": True,
+            "leaves": [{"name": "deep", "goal_spec": "theorem deep : True := by sorry"}],
+            "parent_proof": "",
+        }
+        mock_ag.prove_phase.return_value = ("DONE-CANDIDATE", {}, "unproved")
+        mock_ag.assemble_and_gate.return_value = (False, "stuck")
+
+        dag = D.DAG(
+            goal="deep",
+            nodes={
+                "deep": D.Node(
+                    id="deep",
+                    statement="theorem deep : True := by sorry",
+                    status="open",
+                    folder="proofs/deep",
+                    depth=O.MAX_DEPTH,
+                ),
+            },
+        )
+
+        O.schedule(self.root, dag, max_hours=1.0, max_nodes=1, allow_research=False)
+
+        self.assertEqual("blocked", dag.nodes["deep"].status)
+        child_key = "deep__sub"
+        self.assertNotIn(child_key, dag.nodes)
+
 
 if __name__ == "__main__":
     unittest.main()
