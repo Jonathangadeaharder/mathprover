@@ -1,4 +1,4 @@
-"""Select Goedel (local) vs Aristotle (cloud) for a proof node."""
+"""Select oprover, qwen, or Aristotle for a proof node."""
 
 from __future__ import annotations
 
@@ -65,16 +65,20 @@ def select_prover(
         )
 
     failures = count_failures(proof_dir)
-    if failures >= routing.escalate_after_failures:
-        return RouteDecision(
-            routing.default_capstone,
-            f"escalation after {failures} failed attempts",
+    e = routing.escalate_after_failures
+    # 3-tier escalation: leaf (oprover) -> mid (qwen) -> capstone (aristotle, cloud/rate-limited).
+    if failures >= 2 * e or has_subproofs(proof_dir):
+        reason = (
+            "subproof tree exists and leaf still stuck -> capstone"
+            if has_subproofs(proof_dir) and failures < 2 * e
+            else f"escalation after {failures} failed attempts -> capstone"
         )
+        return RouteDecision(routing.default_capstone, reason)
 
-    if has_subproofs(proof_dir):
+    if routing.default_mid and failures >= e:
         return RouteDecision(
-            routing.default_capstone,
-            "subproof tree exists and leaf still stuck -> aristotle",
+            routing.default_mid,
+            f"escalation after {failures} failed attempts -> mid ({routing.default_mid})",
         )
 
     return RouteDecision(

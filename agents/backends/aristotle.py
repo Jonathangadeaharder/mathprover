@@ -14,7 +14,7 @@ from lean_pipeline import (
     compile_lean_file,
     extract_tarball,
     find_attempt_lean,
-    has_sorry,
+    forbidden_placeholders,
 )
 from prompts import build_aristotle_prompt
 
@@ -89,12 +89,21 @@ async def _run_aristotle_async(
                 timeout=config.max_wait_minutes * 60,
             )
         except asyncio.TimeoutError:
+            # Client-side poll cap only — the CLOUD task keeps running. Do NOT imply it died;
+            # tell the caller how to re-attach so a long run is never abandoned.
+            msg = (
+                f"local poll stopped after {config.max_wait_minutes} min — "
+                f"Aristotle task is STILL RUNNING in the cloud (not cancelled). Re-attach with: "
+                f"python3 agents/aristotle_attach.py --project-id {project_id} "
+                f"--task-id {task.agent_task_id} --node <FOLDER> --wait"
+            )
+            log.write(msg + "\n")
             return RunResult(
                 prover="aristotle",
                 success=False,
                 log_path=log_path,
                 output_path=log_path,
-                message=f"aristotle timed out after {config.max_wait_minutes} minutes",
+                message=msg,
                 project_id=project_id,
             )
         await project.refresh()
@@ -134,13 +143,15 @@ async def _run_aristotle_async(
 
         candidate = found.read_text(encoding="utf-8")
         log.write(f"found={found}\n")
-        if has_sorry(candidate):
+        forbidden = forbidden_placeholders(candidate)
+        if forbidden:
             return RunResult(
                 prover="aristotle",
                 success=False,
                 log_path=log_path,
                 output_path=log_path,
-                message="aristotle output still contains sorry",
+                message="aristotle output still contains forbidden placeholders: "
+                + ", ".join(forbidden),
                 project_id=project_id,
             )
 
