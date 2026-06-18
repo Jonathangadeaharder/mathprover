@@ -14,9 +14,11 @@ AND it is provable from the lemmas already in the repo.
 tau_n = ceil(9 + 7 ln n). Worst case: mu = tau_n (health = full takeover, count>=mu),
 lambda = 9*mu (critical ratio lambda/mu = 9, the hsel boundary). Horizon H = tau_n steps.
 """
+
 from __future__ import annotations
 
 import math
+
 import numpy as np
 
 TARGET = 1.0 - 4.0 / 9.0  # 5/9 ~= 0.5556
@@ -35,18 +37,18 @@ def hit_prob(n: int, mu: int, ratio: float, trials: int = 200_000) -> dict:
     tau = tau_of_n(n)
     lam = int(round(ratio * mu))
     horizon = tau  # the bridge uses H = tau_n
-    counts = np.ones(trials, dtype=np.int64)        # all start at founder count 1
-    alive = np.ones(trials, dtype=bool)             # not yet absorbed
-    hit = np.zeros(trials, dtype=bool)              # reached health
-    ext = np.zeros(trials, dtype=bool)              # went extinct
+    counts = np.ones(trials, dtype=np.int64)  # all start at founder count 1
+    alive = np.ones(trials, dtype=bool)  # not yet absorbed
+    hit = np.zeros(trials, dtype=bool)  # reached health
+    ext = np.zeros(trials, dtype=bool)  # went extinct
     for _ in range(horizon):
         act = alive & ~hit & ~ext
         if not act.any():
             break
         m = counts[act]
-        p = np.minimum(m / (4.0 * mu), 1.0)         # per-slot keep prob (provable lower bound)
-        nxt = RNG.binomial(lam, p)                  # offspring slots landing >= j
-        nxt = np.minimum(nxt, mu)                    # selection caps at mu
+        p = np.minimum(m / (4.0 * mu), 1.0)  # per-slot keep prob (provable lower bound)
+        nxt = RNG.binomial(lam, p)  # offspring slots landing >= j
+        nxt = np.minimum(nxt, mu)  # selection caps at mu
         counts_act = counts.copy()
         counts_act[act] = nxt
         counts = counts_act
@@ -56,15 +58,26 @@ def hit_prob(n: int, mu: int, ratio: float, trials: int = 200_000) -> dict:
         hit |= newhit
     p_hit = hit.mean()
     se = math.sqrt(p_hit * (1 - p_hit) / trials)
-    return {"n": n, "tau": tau, "mu": mu, "lambda": lam, "ratio": round(lam / mu, 3),
-            "horizon": tau, "p_hit": p_hit, "se": se,
-            "margin": p_hit - TARGET, "pass": p_hit - 3 * se > TARGET}
+    return {
+        "n": n,
+        "tau": tau,
+        "mu": mu,
+        "lambda": lam,
+        "ratio": round(lam / mu, 3),
+        "horizon": tau,
+        "p_hit": p_hit,
+        "se": se,
+        "margin": p_hit - TARGET,
+        "pass": p_hit - 3 * se > TARGET,
+    }
 
 
 def main() -> None:
     print(f"TARGET = 1 - 4/9 = {TARGET:.4f}\n")
-    print(f"{'n':>5} {'tau':>4} {'mu':>5} {'lambda':>7} {'L/mu':>5} {'H':>4} "
-          f"{'p_hit':>7} {'+-3se':>7} {'margin':>7} {'pass':>5}")
+    print(
+        f"{'n':>5} {'tau':>4} {'mu':>5} {'lambda':>7} {'L/mu':>5} {'H':>4} "
+        f"{'p_hit':>7} {'+-3se':>7} {'margin':>7} {'pass':>5}"
+    )
     print("-" * 70)
     rows = []
     # Worst case mu = tau (full takeover), critical ratio 9; plus mu=4*tau and ratio 9.
@@ -73,17 +86,22 @@ def main() -> None:
         for mu in (tau, 4 * tau):
             r = hit_prob(n, mu, 9.0)
             rows.append(r)
-            print(f"{r['n']:>5} {r['tau']:>4} {r['mu']:>5} {r['lambda']:>7} {r['ratio']:>5} "
-                  f"{r['horizon']:>4} {r['p_hit']:>7.4f} {3*r['se']:>7.4f} "
-                  f"{r['margin']:>+7.4f} {str(r['pass']):>5}")
+            print(
+                f"{r['n']:>5} {r['tau']:>4} {r['mu']:>5} {r['lambda']:>7} {r['ratio']:>5} "
+                f"{r['horizon']:>4} {r['p_hit']:>7.4f} {3 * r['se']:>7.4f} "
+                f"{r['margin']:>+7.4f} {str(r['pass']):>5}"
+            )
     print("\n-- sensitivity at n=2, mu=tau (the hardest), varying ratio --")
     for ratio in (9.0, 10.0, 12.0, 16.0):
         r = hit_prob(2, tau_of_n(2), ratio)
-        print(f"  ratio {ratio:>4}: p_hit={r['p_hit']:.4f} margin={r['margin']:+.4f} "
-              f"pass={r['pass']}")
+        print(
+            f"  ratio {ratio:>4}: p_hit={r['p_hit']:.4f} margin={r['margin']:+.4f} pass={r['pass']}"
+        )
     worst = min(rows, key=lambda r: r["margin"])
-    print(f"\nWORST margin: n={worst['n']} mu={worst['mu']} -> p_hit={worst['p_hit']:.4f} "
-          f"(target {TARGET:.4f}, margin {worst['margin']:+.4f})")
+    print(
+        f"\nWORST margin: n={worst['n']} mu={worst['mu']} -> p_hit={worst['p_hit']:.4f} "
+        f"(target {TARGET:.4f}, margin {worst['margin']:+.4f})"
+    )
     print("ALL PASS (3-sigma above 5/9):", all(r["pass"] for r in rows))
 
 

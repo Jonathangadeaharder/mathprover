@@ -50,7 +50,9 @@ def main() -> None:
     parser.add_argument("--project-root", required=True, help="Lean project root")
     parser.add_argument("--node", action="append", default=[], help="proofs/<folder> to dispatch")
     parser.add_argument("--node-file", default=None, help="newline-delimited list of proof folders")
-    parser.add_argument("--prover", default="auto", choices=["auto", "oprover", "qwen", "aristotle"])
+    parser.add_argument(
+        "--prover", default="auto", choices=["auto", "oprover", "qwen", "aristotle"]
+    )
     parser.add_argument("--max-rounds", type=int, default=1)
     parser.add_argument("--stop-on-fail", action="store_true")
     args = parser.parse_args()

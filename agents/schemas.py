@@ -14,12 +14,15 @@ from pydantic import BaseModel, Field
 
 class Leaf(BaseModel):
     name: str
-    goal_spec: str = Field(description="self-contained Lean: imports + open + `lemma … := by sorry`")
+    goal_spec: str = Field(
+        description="self-contained Lean: imports + open + `lemma … := by sorry`"
+    )
     sketch: str = ""
 
 
 class Plan(BaseModel):
     """PLAN-phase output: prove the node directly, or decompose into leaves + a parent proof."""
+
     mode: Literal["prove", "refute_then_prove"] = "prove"
     direct: bool = True
     leaves: list[Leaf] = Field(default_factory=list)
@@ -43,11 +46,13 @@ class Attempt(BaseModel):
 
 class ProposeResult(BaseModel):
     """deep-research thread / synthesis output: candidate proof attempts and/or a verified-later split."""
+
     attempts: list[Attempt] = Field(default_factory=list)
     split: Split | None = None
 
 
 class StrategizeResult(BaseModel):
     """strategize-phase output: solve directly, or split into sub-lemmas."""
+
     action: Literal["solve", "split"] = "solve"
     sketch: str = ""

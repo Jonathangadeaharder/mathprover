@@ -28,7 +28,12 @@ AGENTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(AGENTS))
 
 import models as M  # noqa: E402
-from lean_pipeline import apply_generated_proof, compile_lean_file, extract_lean4_blocks, has_sorry  # noqa: E402
+from lean_pipeline import (  # noqa: E402
+    apply_generated_proof,
+    compile_lean_file,
+    extract_lean4_blocks,
+    has_sorry,
+)
 
 INPUT_LIMIT = M.INPUT_LIMIT
 SOLVE_RESERVE = M.SOLVE_RESERVE
@@ -52,15 +57,25 @@ def is_self_contained(lean_source: str, model: str = M.NAMES["oprover"]) -> tupl
     return (n <= INPUT_LIMIT, n)
 
 
-def solve_leaf(lean_source: str, project_root: Path, work: Path,
-               *, models=(M.NAMES["oprover"], M.NAMES["qwen"])) -> str | None:
+def solve_leaf(
+    lean_source: str,
+    project_root: Path,
+    work: Path,
+    *,
+    models=(M.NAMES["oprover"], M.NAMES["qwen"]),
+) -> str | None:
     """Try local models with the 32k generation reserve; lake+sorry gate. Returns proof or None."""
     work.mkdir(parents=True, exist_ok=True)
     for model in models:
-        out = M.chat_sync(model, [{"role": "user", "content": build_prompt(lean_source)}], max_tokens=SOLVE_RESERVE)
+        out = M.chat_sync(
+            model,
+            [{"role": "user", "content": build_prompt(lean_source)}],
+            max_tokens=SOLVE_RESERVE,
+        )
         cand = apply_generated_proof(lean_source, out)
         if cand and not has_sorry(cand):
-            f = work / "leaf_candidate.lean"; f.write_text(cand)
+            f = work / "leaf_candidate.lean"
+            f.write_text(cand)
             if compile_lean_file(project_root=project_root, lean_file=f).ok:
                 return cand
     return None
@@ -76,13 +91,19 @@ def aristotle_decompose(lean_source: str, *, model: str = M.NAMES["qwen"]) -> li
         '{"name": "...", "statement": "lemma <name> ... := by sorry"} with the necessary imports folded '
         "into each statement's context. No prose."
     )
-    out = M.chat_sync(model, [{"role": "system", "content": sys_msg},
-                        {"role": "user", "content": f"```lean\n{lean_source}\n```"}], max_tokens=SOLVE_RESERVE)
+    out = M.chat_sync(
+        model,
+        [
+            {"role": "system", "content": sys_msg},
+            {"role": "user", "content": f"```lean\n{lean_source}\n```"},
+        ],
+        max_tokens=SOLVE_RESERVE,
+    )
     blocks = extract_lean4_blocks(out)
     text = blocks[-1] if blocks else out
     try:
         start, end = text.find("["), text.rfind("]")
-        parsed = json.loads(text[start:end + 1]) if start >= 0 else []
+        parsed = json.loads(text[start : end + 1]) if start >= 0 else []
     except Exception:  # noqa: BLE001
         return []
     subs: list[dict] = []
@@ -94,42 +115,68 @@ def aristotle_decompose(lean_source: str, *, model: str = M.NAMES["qwen"]) -> li
     return subs
 
 
-def recurse(lean_source: str, project_root: Path, work: Path, depth: int, max_depth: int, log) -> bool:
+def recurse(
+    lean_source: str, project_root: Path, work: Path, depth: int, max_depth: int, log
+) -> bool:
     ok, ntok = is_self_contained(lean_source)
-    log(f"{'  '*depth}node: {ntok} prompt-tokens (limit {INPUT_LIMIT}) {'[leaf]' if ok else '[over budget -> decompose]'}")
+    log(
+        f"{'  ' * depth}node: {ntok} prompt-tokens (limit {INPUT_LIMIT}) {'[leaf]' if ok else '[over budget -> decompose]'}"
+    )
     if ok:
         proof = solve_leaf(lean_source, project_root, work)
-        log(f"{'  '*depth}  leaf solve: {'PROVED (lake-verified)' if proof else 'FAILED'}")
+        log(f"{'  ' * depth}  leaf solve: {'PROVED (lake-verified)' if proof else 'FAILED'}")
         if proof:
             return True
         if depth >= max_depth:
-            log(f"{'  '*depth}  max depth; would hand to aristotle (decompose-or-solve).")
+            log(f"{'  ' * depth}  max depth; would hand to aristotle (decompose-or-solve).")
             return False
     if depth >= max_depth:
-        log(f"{'  '*depth}  max depth reached without proof.")
+        log(f"{'  ' * depth}  max depth reached without proof.")
         return False
     subs = aristotle_decompose(lean_source)
-    log(f"{'  '*depth}  decomposed into {len(subs)} sub-lemmas: {[s.get('name') for s in subs]}")
+    log(f"{'  ' * depth}  decomposed into {len(subs)} sub-lemmas: {[s.get('name') for s in subs]}")
     if not subs:
         return False
-    return all(recurse(s.get("statement", ""), project_root, (work / s.get("name", "sub")), depth + 1, max_depth, log)
-               for s in subs)
+    return all(
+        recurse(
+            s.get("statement", ""),
+            project_root,
+            (work / s.get("name", "sub")),
+            depth + 1,
+            max_depth,
+            log,
+        )
+        for s in subs
+    )
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Budget-gated recursive proof decomposition.")
     ap.add_argument("--goal-file", required=True)
-    ap.add_argument("--project-root", default=str(Path.home() / "projects" / "lean-runtime-analysis"))
+    ap.add_argument(
+        "--project-root", default=str(Path.home() / "projects" / "lean-runtime-analysis")
+    )
     ap.add_argument("--max-depth", type=int, default=3)
-    ap.add_argument("--measure-only", action="store_true", help="Just measure the prompt tokens + gate.")
+    ap.add_argument(
+        "--measure-only", action="store_true", help="Just measure the prompt tokens + gate."
+    )
     args = ap.parse_args()
     src = Path(args.goal_file).read_text()
     root = Path(args.project_root)
-    work = root / ".mathprover" / "decompose"; work.mkdir(parents=True, exist_ok=True)
+    work = root / ".mathprover" / "decompose"
+    work.mkdir(parents=True, exist_ok=True)
     if args.measure_only:
         ok, n = is_self_contained(src)
-        print(json.dumps({"prompt_tokens": n, "input_limit": INPUT_LIMIT, "solve_reserve": SOLVE_RESERVE,
-                          "self_contained": ok}))
+        print(
+            json.dumps(
+                {
+                    "prompt_tokens": n,
+                    "input_limit": INPUT_LIMIT,
+                    "solve_reserve": SOLVE_RESERVE,
+                    "self_contained": ok,
+                }
+            )
+        )
         return
     proved = recurse(src, root, work, 0, args.max_depth, lambda m: print(m, flush=True))
     print("RESULT:", "PROVED" if proved else "NOT PROVED")

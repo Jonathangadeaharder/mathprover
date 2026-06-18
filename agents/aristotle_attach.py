@@ -15,6 +15,7 @@ Usage:
   python3 aristotle_attach.py --project-id <PID> [--task-id <TID>] \
       --node <FOLDER> --project-root ~/projects/lean-runtime-analysis [--wait]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,7 +51,7 @@ async def _amain(args: argparse.Namespace) -> int:
     if task is None:
         print("no task found on project")
         return 2
-    print(f"project={args.project_id} status={getattr(project,'status','?')}")
+    print(f"project={args.project_id} status={getattr(project, 'status', '?')}")
     print(f"task={task.agent_task_id} status={task.status.name}")
 
     if not args.wait:
@@ -94,7 +95,9 @@ async def _amain(args: argparse.Namespace) -> int:
         return 1
     node_attempt.write_text(candidate, encoding="utf-8")
     print(f"VERIFIED + written to {node_attempt}")
-    print("NEXT: confirm #print axioms = [propext, Classical.choice, Quot.sound] and statement unchanged")
+    print(
+        "NEXT: confirm #print axioms = [propext, Classical.choice, Quot.sound] and statement unchanged"
+    )
     return 0
 
 
@@ -102,8 +105,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--project-id", required=True)
     ap.add_argument("--task-id", default=None)
-    ap.add_argument("--node", default=None, help="proofs/<FOLDER> for writeback+verify (with --wait)")
-    ap.add_argument("--project-root", default=str(Path.home() / "projects" / "lean-runtime-analysis"))
+    ap.add_argument(
+        "--node", default=None, help="proofs/<FOLDER> for writeback+verify (with --wait)"
+    )
+    ap.add_argument(
+        "--project-root", default=str(Path.home() / "projects" / "lean-runtime-analysis")
+    )
     ap.add_argument("--wait", action="store_true", help="poll to completion, then download+verify")
     ap.add_argument("--poll", type=int, default=30, help="poll interval seconds")
     args = ap.parse_args()

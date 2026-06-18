@@ -83,6 +83,7 @@ def _truncate(text: str | None, max_chars: int = MAX_FEEDBACK_CHARS) -> str | No
 @dataclass
 class ProvingStep:
     """One round of the compiler-in-the-loop proving trajectory."""
+
     ts: str
     event: str = "proving_step"
     run_id: str = ""
@@ -209,6 +210,7 @@ def _session_defaults() -> dict[str, Any]:
 
 
 # ---------- bulk reader (for parse_logs / analysis) ----------
+
 
 def read_trajectory_file(path: Path) -> list[dict[str, Any]]:
     """Read a trajectory JSONL file into a list of dicts. Skips malformed lines."""

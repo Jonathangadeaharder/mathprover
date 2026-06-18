@@ -126,7 +126,11 @@ export function statusKey(status: string): NodeStatus {
   if (status === "SORRIES" || status === "PROVEN_WITH_SORRIES")
     return "SORRIES";
   if (status === "PROGRESS" || status === "IN_PROGRESS") return "IN_PROGRESS";
-  if (status === "FAILED" || status === "ATTEMPTED_FAILED" || status === "STUCK")
+  if (
+    status === "FAILED" ||
+    status === "ATTEMPTED_FAILED" ||
+    status === "STUCK"
+  )
     return "STUCK";
   if (status === "DRAFT") return "DRAFT";
   if (status === "REJECTED") return "REJECTED";

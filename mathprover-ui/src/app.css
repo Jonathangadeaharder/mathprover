@@ -735,7 +735,9 @@ select:focus {
 .track-clip:hover,
 .track-clip.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-sm);
+  box-shadow:
+    0 0 0 2px var(--accent-soft),
+    var(--shadow-sm);
 }
 
 .track-clip.running {
@@ -743,16 +745,36 @@ select:focus {
   outline-offset: 1px;
 }
 
-.track-clip[data-status="PROVEN"] { border-left-color: var(--st-proven); }
-.track-clip[data-status="DISPROVEN"] { border-left-color: var(--st-disproven); }
-.track-clip[data-status="SORRIES"] { border-left-color: var(--st-sorries); }
-.track-clip[data-status="IN_PROGRESS"] { border-left-color: var(--st-in-progress); }
-.track-clip[data-status="READY"] { border-left-color: var(--st-ready); }
-.track-clip[data-status="STUCK"] { border-left-color: var(--st-stuck); }
-.track-clip[data-status="DRAFT"] { border-left-color: var(--st-draft); }
-.track-clip[data-status="REJECTED"] { border-left-color: var(--st-rejected); }
-.track-clip[data-status="BLOCKED"] { border-left-color: var(--st-blocked); }
-.track-clip[data-status="UNEXPLORED"] { border-left-color: var(--st-unexplored); }
+.track-clip[data-status="PROVEN"] {
+  border-left-color: var(--st-proven);
+}
+.track-clip[data-status="DISPROVEN"] {
+  border-left-color: var(--st-disproven);
+}
+.track-clip[data-status="SORRIES"] {
+  border-left-color: var(--st-sorries);
+}
+.track-clip[data-status="IN_PROGRESS"] {
+  border-left-color: var(--st-in-progress);
+}
+.track-clip[data-status="READY"] {
+  border-left-color: var(--st-ready);
+}
+.track-clip[data-status="STUCK"] {
+  border-left-color: var(--st-stuck);
+}
+.track-clip[data-status="DRAFT"] {
+  border-left-color: var(--st-draft);
+}
+.track-clip[data-status="REJECTED"] {
+  border-left-color: var(--st-rejected);
+}
+.track-clip[data-status="BLOCKED"] {
+  border-left-color: var(--st-blocked);
+}
+.track-clip[data-status="UNEXPLORED"] {
+  border-left-color: var(--st-unexplored);
+}
 
 .clip-main {
   min-width: 0;
@@ -1055,8 +1077,7 @@ select:focus {
   letter-spacing: 0;
 }
 .gnode.active-run {
-  box-shadow:
-    0 0 16px var(--st-progress-bg);
+  box-shadow: 0 0 16px var(--st-progress-bg);
   animation: pulse-run 2s ease-in-out infinite;
   z-index: 8;
 }
@@ -1093,12 +1114,10 @@ select:focus {
 @keyframes pulse-run {
   0%,
   100% {
-    box-shadow:
-      0 0 12px var(--st-progress-bg);
+    box-shadow: 0 0 12px var(--st-progress-bg);
   }
   50% {
-    box-shadow:
-      0 0 22px var(--st-progress);
+    box-shadow: 0 0 22px var(--st-progress);
   }
 }
 
@@ -2732,9 +2751,15 @@ select:focus {
   font-size: 12px;
   font-family: var(--font-mono);
 }
-.axiom-ok { color: var(--st-proven); }
-.axiom-warn { color: var(--st-sorries); }
-.axiom-text { color: var(--fg-1); }
+.axiom-ok {
+  color: var(--st-proven);
+}
+.axiom-warn {
+  color: var(--st-sorries);
+}
+.axiom-text {
+  color: var(--fg-1);
+}
 .map-seg-bar {
   display: flex;
   gap: 4px;
@@ -2765,15 +2790,27 @@ select:focus {
   padding: 1px 5px;
   border-radius: 3px;
 }
-.capitalize { text-transform: capitalize; }
-.italic-fg3 { color: var(--fg-3); font-style: italic; }
-.name-sm-fg3 { font-size: 11px; color: var(--fg-3); }
-.fg-0 { color: var(--fg-0); }
+.capitalize {
+  text-transform: capitalize;
+}
+.italic-fg3 {
+  color: var(--fg-3);
+  font-style: italic;
+}
+.name-sm-fg3 {
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.fg-0 {
+  color: var(--fg-0);
+}
 .badge-paper {
   background: var(--st-progress-bg);
   color: var(--st-progress);
 }
-.fg-4 { color: var(--fg-4); }
+.fg-4 {
+  color: var(--fg-4);
+}
 .frontier-section-head {
   display: flex;
   align-items: baseline;
@@ -2810,9 +2847,15 @@ select:focus {
   color: var(--fg-4);
   font-family: var(--font-mono);
 }
-.text-left { text-align: left; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
+.text-left {
+  text-align: left;
+}
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
 .blocker-count {
   font-size: 10.5px;
   color: var(--fg-3);
@@ -2833,8 +2876,12 @@ select:focus {
   font-weight: 600;
 }
 /* PremisePicker utilities */
-.src-mt { margin-top: 2px; }
-.premise-list-mb { margin-bottom: 16px; }
+.src-mt {
+  margin-top: 2px;
+}
+.premise-list-mb {
+  margin-bottom: 16px;
+}
 .graph-svg-base {
   width: 2400px;
   height: 1600px;
@@ -2941,8 +2988,12 @@ select:focus {
   font-size: 11px;
   color: var(--fg-3);
 }
-.ml-auto { margin-left: auto; }
-.live-indicator { color: var(--st-progress); }
+.ml-auto {
+  margin-left: auto;
+}
+.live-indicator {
+  color: var(--st-progress);
+}
 .run-detail-target {
   font-size: 13px;
   color: var(--fg-0);

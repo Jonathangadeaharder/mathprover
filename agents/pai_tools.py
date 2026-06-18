@@ -23,6 +23,7 @@ def _c(ctx: RunContext[T.Ctx]) -> T.Ctx:
 
 # ---- Navigate / read ----
 
+
 def list_dir(ctx: RunContext[T.Ctx], path: str = ".") -> str:
     """List directory contents under the project root."""
     return T.t_list_dir(_c(ctx), path=path)
@@ -39,6 +40,7 @@ def grep_project(ctx: RunContext[T.Ctx], pattern: str, glob: str = "*.lean") -> 
 
 
 # ---- Probe (model-free Lean compilation) ----
+
 
 def run_lean(ctx: RunContext[T.Ctx], snippet: str) -> str:
     """Compile a Lean 4 snippet in a scratch file. Returns COMPILES or FAIL."""
@@ -62,6 +64,7 @@ def search_premises(ctx: RunContext[T.Ctx], goal: str = "", k: int = 12) -> str:
 
 # ---- Structure ----
 
+
 def architect(ctx: RunContext[T.Ctx], goal: str = "") -> str:
     """Build a semantic spine + helper-DAG for the goal."""
     return T.t_architect(_c(ctx), goal=goal)
@@ -74,7 +77,16 @@ def scaffold_helpers(ctx: RunContext[T.Ctx], helpers: list[dict] | None = None) 
 
 # ---- Tool sets for agents ----
 
-PLANNER_TOOLS = [list_dir, read_file, grep_project, run_lean, check_decl,
-                 open_private, search_premises, architect, scaffold_helpers]
+PLANNER_TOOLS = [
+    list_dir,
+    read_file,
+    grep_project,
+    run_lean,
+    check_decl,
+    open_private,
+    search_premises,
+    architect,
+    scaffold_helpers,
+]
 
 RESEARCHER_TOOLS = [run_lean, check_decl, search_premises, grep_project, read_file]

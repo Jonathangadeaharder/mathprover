@@ -9,7 +9,10 @@ export const GET: RequestHandler = async ({ url }) => {
     const root = resolveRootFromRequest(url);
     const nodeId = url.searchParams.get("node");
     if (!nodeId) {
-      return json({ paper: null, lean: null, error: "Missing ?node=" }, { status: 400 });
+      return json(
+        { paper: null, lean: null, error: "Missing ?node=" },
+        { status: 400 },
+      );
     }
 
     const folder = url.searchParams.get("folder") || nodeId;
@@ -21,21 +24,33 @@ export const GET: RequestHandler = async ({ url }) => {
 
     try {
       paper = await readFile(resolve(proofDir, "paper_source.md"), "utf-8");
-    } catch { /* not found */ }
+    } catch {
+      /* not found */
+    }
 
     try {
       lean = await readFile(resolve(proofDir, "attempt.lean"), "utf-8");
-    } catch { /* not found */ }
+    } catch {
+      /* not found */
+    }
 
     try {
       status = await readFile(resolve(proofDir, "status.md"), "utf-8");
-    } catch { /* not found */ }
+    } catch {
+      /* not found */
+    }
 
     return json({ paper, lean, status, error: null });
   } catch (err) {
     if (err instanceof ProjectRootError) {
-      return json({ paper: null, lean: null, error: err.message }, { status: 400 });
+      return json(
+        { paper: null, lean: null, error: err.message },
+        { status: 400 },
+      );
     }
-    return json({ paper: null, lean: null, error: (err as Error).message }, { status: 500 });
+    return json(
+      { paper: null, lean: null, error: (err as Error).message },
+      { status: 500 },
+    );
   }
 };

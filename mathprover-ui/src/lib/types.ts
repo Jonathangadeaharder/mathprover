@@ -10,7 +10,12 @@ export type NodeStatus =
   | "READY"
   | "UNEXPLORED";
 
-export type AttemptResult = "PROVEN" | "PARTIAL" | "PROGRESS" | "FAILED" | "DISPROVEN";
+export type AttemptResult =
+  | "PROVEN"
+  | "PARTIAL"
+  | "PROGRESS"
+  | "FAILED"
+  | "DISPROVEN";
 
 export type EdgeSufficiency = "sufficient" | "insufficient" | "unknown";
 

@@ -14,12 +14,14 @@ Each agent uses models.run_sync() which enforces turn-based residency before eve
 
 from __future__ import annotations
 
+from typing import Any
+
+from pydantic_ai import Agent
+
 import models as M
 import pai_tools
 import schemas
 import tools as T
-from pydantic_ai import Agent
-from typing import Any
 
 PLAN_SYS = (
     "You are the PLANNER of a turn-based theorem-proving agent. You do NOT write Lean proofs; "
@@ -57,47 +59,64 @@ SPLIT_SYS = (
 
 
 def _planner() -> Any:
-    ag = Agent(M.model("qwen"), deps_type=T.Ctx, output_type=schemas.Plan,
-               system_prompt=PLAN_SYS, retries=3)
+    ag = Agent(
+        M.model("qwen"),
+        deps_type=T.Ctx,
+        output_type=schemas.Plan,
+        system_prompt=PLAN_SYS,
+        retries=3,
+    )
     for t in pai_tools.PLANNER_TOOLS:
         ag.tool(t)
     return ag
 
 
 def _researcher() -> Any:
-    ag = Agent(M.model("qwen"), deps_type=T.Ctx, output_type=schemas.ProposeResult,
-               system_prompt=RESEARCH_SYS, retries=2)
+    ag = Agent(
+        M.model("qwen"),
+        deps_type=T.Ctx,
+        output_type=schemas.ProposeResult,
+        system_prompt=RESEARCH_SYS,
+        retries=2,
+    )
     for t in pai_tools.RESEARCHER_TOOLS:
         ag.tool(t)
     return ag
 
 
 def _context() -> Any:
-    return Agent(M.model("gemma"), deps_type=T.Ctx, output_type=str, retries=2,
-                 system_prompt=(
-                     "You are a Lean 4 context librarian. You read large project context and emit a "
-                     "COMPACT, self-contained summary for a downstream prover with a small window. "
-                     "Be terse and exact; never invent lemma names or definitions — only report what "
-                     "is actually present.\n\n"
-                     "Output EXACTLY two sections:\n"
-                     "=== BRIEF ===\n(<800 words) the exact goal statement; the key in-scope definitions "
-                     "and what they unfold to; candidate strategy; any traps.\n"
-                     "=== PREMISES ===\nup to 12 candidate signatures, ONE per line, verbatim."))
+    return Agent(
+        M.model("gemma"),
+        deps_type=T.Ctx,
+        output_type=str,
+        retries=2,
+        system_prompt=(
+            "You are a Lean 4 context librarian. You read large project context and emit a "
+            "COMPACT, self-contained summary for a downstream prover with a small window. "
+            "Be terse and exact; never invent lemma names or definitions — only report what "
+            "is actually present.\n\n"
+            "Output EXACTLY two sections:\n"
+            "=== BRIEF ===\n(<800 words) the exact goal statement; the key in-scope definitions "
+            "and what they unfold to; candidate strategy; any traps.\n"
+            "=== PREMISES ===\nup to 12 candidate signatures, ONE per line, verbatim."
+        ),
+    )
 
 
 def _synthesizer() -> Any:
-    return Agent(M.model("gemma"), output_type=schemas.ProposeResult, retries=2,
-                 system_prompt=SYNTH_SYS)
+    return Agent(
+        M.model("gemma"), output_type=schemas.ProposeResult, retries=2, system_prompt=SYNTH_SYS
+    )
 
 
 def _strategizer() -> Any:
-    return Agent(M.model("qwen"), output_type=schemas.StrategizeResult, retries=2,
-                 system_prompt=STRAT_SYS)
+    return Agent(
+        M.model("qwen"), output_type=schemas.StrategizeResult, retries=2, system_prompt=STRAT_SYS
+    )
 
 
 def _splitter() -> Any:
-    return Agent(M.model("gemma"), output_type=schemas.Split, retries=2,
-                 system_prompt=SPLIT_SYS)
+    return Agent(M.model("gemma"), output_type=schemas.Split, retries=2, system_prompt=SPLIT_SYS)
 
 
 _planner_ag: Any = None

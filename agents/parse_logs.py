@@ -32,11 +32,9 @@ import argparse
 import json
 import re
 import sys
-from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
-
 
 # ---------- pipeline log patterns ----------
 
@@ -81,9 +79,7 @@ _RE_PROVE_EXHAUSTED = re.compile(
 )
 
 # General: "=== pipeline run 20260617T143000  log=... ==="
-_RE_PIPELINE_RUN = re.compile(
-    r"===\s+pipeline run\s+(\S+)\s+log="
-)
+_RE_PIPELINE_RUN = re.compile(r"===\s+pipeline run\s+(\S+)\s+log=")
 
 
 # ---------- attempt log patterns ----------
@@ -122,20 +118,21 @@ _RE_ARISTOTLE_STATUS = re.compile(r"final_status=(\S+)")
 @dataclass
 class ParsedStep:
     """One extracted proving step from a text log."""
+
     ts: str = ""
     event: str = "parsed_step"
-    source: str = ""          # "pipeline_log" | "attempt_log"
+    source: str = ""  # "pipeline_log" | "attempt_log"
     source_file: str = ""
     run_id: str = ""
     node_id: str = ""
     prover: str = ""
     round: int = 0
     branch: int = -1
-    sample: int = -1          # lmstudio dispatch sample index
-    sample_round: int = -1    # lmstudio dispatch correction round
-    gate: str = ""            # "query" | "compile_fail" | "compile_ok" | "statement_changed" |
-                              # "forbidden_placeholder" | "no_block" | "chat_error" | "verified"
-    feedback_head: str = ""   # first line of compile feedback (pipeline logs only)
+    sample: int = -1  # lmstudio dispatch sample index
+    sample_round: int = -1  # lmstudio dispatch correction round
+    gate: str = ""  # "query" | "compile_fail" | "compile_ok" | "statement_changed" |
+    # "forbidden_placeholder" | "no_block" | "chat_error" | "verified"
+    feedback_head: str = ""  # first line of compile feedback (pipeline logs only)
     model: str = ""
     max_tokens: int | None = None
     temperature: float | None = None
@@ -175,19 +172,21 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             model = m.group(4)
             mt = int(m.group(5))
             temp = float(m.group(6))
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="query",
-                model=model,
-                max_tokens=mt,
-                temperature=temp,
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="query",
+                    model=model,
+                    max_tokens=mt,
+                    temperature=temp,
+                )
+            )
             continue
 
         # Compile fail
@@ -201,17 +200,19 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             after = line.split("::", 1)
             if len(after) > 1:
                 feedback_head = after[1].strip()[:200]
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="compile_fail",
-                feedback_head=feedback_head,
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="compile_fail",
+                    feedback_head=feedback_head,
+                )
+            )
             continue
 
         # Statement changed
@@ -220,16 +221,18 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             ts_time = m.group(1)
             rnd = int(m.group(2))
             brn = int(m.group(3))
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="statement_changed",
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="statement_changed",
+                )
+            )
             continue
 
         # Forbidden placeholder
@@ -238,16 +241,18 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             ts_time = m.group(1)
             rnd = int(m.group(2))
             brn = int(m.group(3))
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="forbidden_placeholder",
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="forbidden_placeholder",
+                )
+            )
             continue
 
         # No lean block
@@ -256,16 +261,18 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             ts_time = m.group(1)
             rnd = int(m.group(2))
             brn = int(m.group(3))
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="no_block",
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="no_block",
+                )
+            )
             continue
 
         # Verified
@@ -274,16 +281,18 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             ts_time = m.group(1)
             rnd = int(m.group(2))
             brn = int(m.group(3))
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="verified",
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="verified",
+                )
+            )
             continue
 
         # Chat error
@@ -292,16 +301,18 @@ def parse_pipeline_log(path: Path) -> list[ParsedStep]:
             ts_time = m.group(1)
             rnd = int(m.group(2))
             brn = int(m.group(3))
-            steps.append(ParsedStep(
-                ts=_make_ts(date_prefix, ts_time),
-                source="pipeline_log",
-                source_file=str(path),
-                run_id=current_run_id,
-                prover="oprover",
-                round=rnd,
-                branch=brn,
-                gate="chat_error",
-            ))
+            steps.append(
+                ParsedStep(
+                    ts=_make_ts(date_prefix, ts_time),
+                    source="pipeline_log",
+                    source_file=str(path),
+                    run_id=current_run_id,
+                    prover="oprover",
+                    round=rnd,
+                    branch=brn,
+                    gate="chat_error",
+                )
+            )
             continue
 
     return steps
@@ -348,107 +359,121 @@ def parse_attempt_log(path: Path, node_id: str = "") -> list[ParsedStep]:
         if m:
             current_sample = int(m.group(1))
             current_round = int(m.group(2))
-            steps.append(ParsedStep(
-                source="attempt_log",
-                source_file=str(path),
-                run_id=run_id,
-                node_id=node_id,
-                prover=current_prover,
-                sample=current_sample,
-                sample_round=current_round,
-                gate="query",
-                model=current_model,
-            ))
+            steps.append(
+                ParsedStep(
+                    source="attempt_log",
+                    source_file=str(path),
+                    run_id=run_id,
+                    node_id=node_id,
+                    prover=current_prover,
+                    sample=current_sample,
+                    sample_round=current_round,
+                    gate="query",
+                    model=current_model,
+                )
+            )
             continue
 
         # Verified
         m = _RE_ATTEMPT_VERIFIED.search(line)
         if m:
-            steps.append(ParsedStep(
-                source="attempt_log",
-                source_file=str(path),
-                run_id=run_id,
-                node_id=node_id,
-                prover=current_prover,
-                sample=int(m.group(1)),
-                sample_round=int(m.group(2)),
-                gate="verified",
-                model=current_model,
-            ))
+            steps.append(
+                ParsedStep(
+                    source="attempt_log",
+                    source_file=str(path),
+                    run_id=run_id,
+                    node_id=node_id,
+                    prover=current_prover,
+                    sample=int(m.group(1)),
+                    sample_round=int(m.group(2)),
+                    gate="verified",
+                    model=current_model,
+                )
+            )
             continue
 
         # Lean error
         if _RE_ATTEMPT_LEAN_ERROR.search(line):
-            steps.append(ParsedStep(
-                source="attempt_log",
-                source_file=str(path),
-                run_id=run_id,
-                node_id=node_id,
-                prover=current_prover,
-                sample=current_sample,
-                sample_round=current_round,
-                gate="compile_fail",
-                model=current_model,
-            ))
+            steps.append(
+                ParsedStep(
+                    source="attempt_log",
+                    source_file=str(path),
+                    run_id=run_id,
+                    node_id=node_id,
+                    prover=current_prover,
+                    sample=current_sample,
+                    sample_round=current_round,
+                    gate="compile_fail",
+                    model=current_model,
+                )
+            )
             continue
 
         # Chat error
         if _RE_ATTEMPT_CHAT_ERROR.search(line):
-            steps.append(ParsedStep(
-                source="attempt_log",
-                source_file=str(path),
-                run_id=run_id,
-                node_id=node_id,
-                prover=current_prover,
-                sample=current_sample,
-                sample_round=current_round,
-                gate="chat_error",
-                model=current_model,
-            ))
+            steps.append(
+                ParsedStep(
+                    source="attempt_log",
+                    source_file=str(path),
+                    run_id=run_id,
+                    node_id=node_id,
+                    prover=current_prover,
+                    sample=current_sample,
+                    sample_round=current_round,
+                    gate="chat_error",
+                    model=current_model,
+                )
+            )
             continue
 
         # No block
         if _RE_ATTEMPT_NO_BLOCK.search(line):
-            steps.append(ParsedStep(
-                source="attempt_log",
-                source_file=str(path),
-                run_id=run_id,
-                node_id=node_id,
-                prover=current_prover,
-                sample=current_sample,
-                sample_round=current_round,
-                gate="no_block",
-                model=current_model,
-            ))
+            steps.append(
+                ParsedStep(
+                    source="attempt_log",
+                    source_file=str(path),
+                    run_id=run_id,
+                    node_id=node_id,
+                    prover=current_prover,
+                    sample=current_sample,
+                    sample_round=current_round,
+                    gate="no_block",
+                    model=current_model,
+                )
+            )
             continue
 
         # Forbidden placeholder
         if _RE_ATTEMPT_FORBIDDEN.search(line):
-            steps.append(ParsedStep(
-                source="attempt_log",
-                source_file=str(path),
-                run_id=run_id,
-                node_id=node_id,
-                prover=current_prover,
-                sample=current_sample,
-                sample_round=current_round,
-                gate="forbidden_placeholder",
-                model=current_model,
-            ))
+            steps.append(
+                ParsedStep(
+                    source="attempt_log",
+                    source_file=str(path),
+                    run_id=run_id,
+                    node_id=node_id,
+                    prover=current_prover,
+                    sample=current_sample,
+                    sample_round=current_round,
+                    gate="forbidden_placeholder",
+                    model=current_model,
+                )
+            )
             continue
 
     # Aristotle summary step
     if is_aristotle:
-        steps.append(ParsedStep(
-            source="attempt_log",
-            source_file=str(path),
-            run_id=run_id,
-            node_id=node_id,
-            prover="aristotle",
-            gate="aristotle_result",
-            aristotle_project_id=aristotle_project_id,
-            aristotle_final_status=aristotle_final_status,
-        ))
+        steps.append(
+            ParsedStep(
+                source="attempt_log",
+                source_file=str(path),
+                run_id=run_id,
+                node_id=node_id,
+                prover="aristotle",
+                gate="aristotle_result",
+                aristotle_project_id=aristotle_project_id,
+                aristotle_final_status=aristotle_final_status,
+            )
+        )
 
     return steps
 

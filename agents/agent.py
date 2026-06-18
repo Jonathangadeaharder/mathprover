@@ -34,17 +34,20 @@ import tools as T  # noqa: E402
 
 
 def _axiom_backed(ctx: T.Ctx) -> bool:
-    txt = (ctx.attempt_file.read_text(errors="ignore") if ctx.attempt_file.exists() else ctx.goal_src)
+    txt = ctx.attempt_file.read_text(errors="ignore") if ctx.attempt_file.exists() else ctx.goal_src
     ps = ctx.proof_dir / "paper_source.md"
     if ps.exists():
         txt += ps.read_text(errors="ignore")
     low = (txt + ctx.node).lower()
-    return any(k in low for k in ("quarantine", "axiom", "is_false", "trusted", "level_based_theorem"))
+    return any(
+        k in low for k in ("quarantine", "axiom", "is_false", "trusted", "level_based_theorem")
+    )
 
 
 def _strip_imports(text: str) -> str:
-    return "\n".join(ln for ln in text.splitlines()
-                     if not ln.strip().startswith(("import ", "open ")))
+    return "\n".join(
+        ln for ln in text.splitlines() if not ln.strip().startswith(("import ", "open "))
+    )
 
 
 def _node_statement(goal_src: str) -> str:
@@ -54,18 +57,22 @@ def _node_statement(goal_src: str) -> str:
 
 def _gather_context(ctx: T.Ctx) -> None:
     """CONTEXT phase via PydanticAI context agent (gemma). Builds brief + curated premises on ctx."""
-    attempt = ctx.attempt_file.read_text(errors="ignore") if ctx.attempt_file.exists() else ctx.goal_src
+    attempt = (
+        ctx.attempt_file.read_text(errors="ignore") if ctx.attempt_file.exists() else ctx.goal_src
+    )
     paper = ""
     ps = ctx.proof_dir / "paper_source.md"
     if ps.exists():
         paper = ps.read_text(errors="ignore")[:8000]
     defs = P.definitions_for_goal(ctx.goal_src, ctx.project_root)
     candidates = T._lexical_prefilter(ctx.goal_src, P.project_lemma_corpus(ctx.project_root))
-    prompt = (f"Goal file (proofs/{ctx.node}/attempt.lean):\n```lean\n{attempt[:6000]}\n```\n\n"
-              f"Paper source notes:\n{paper or '(none)'}\n\n"
-              f"In-scope definitions found in the project:\n{chr(10).join(defs) or '(none)'}\n\n"
-              f"Candidate lemma signatures (pick the useful ones):\n{chr(10).join(candidates)}\n\n"
-              "Focus: the sorry in this file")
+    prompt = (
+        f"Goal file (proofs/{ctx.node}/attempt.lean):\n```lean\n{attempt[:6000]}\n```\n\n"
+        f"Paper source notes:\n{paper or '(none)'}\n\n"
+        f"In-scope definitions found in the project:\n{chr(10).join(defs) or '(none)'}\n\n"
+        f"Candidate lemma signatures (pick the useful ones):\n{chr(10).join(candidates)}\n\n"
+        "Focus: the sorry in this file"
+    )
     try:
         ag = pai_agents.context()
         result = M.run_sync(ag, "gemma", prompt, deps=ctx, max_tokens=4096, temperature=0.2)
@@ -76,8 +83,11 @@ def _gather_context(ctx: T.Ctx) -> None:
     brief, prem = out, []
     if "=== PREMISES ===" in out:
         brief, _, premblk = out.partition("=== PREMISES ===")
-        prem = [ln.strip(" -\t") for ln in premblk.splitlines()
-                if ln.strip() and ("theorem" in ln or "lemma" in ln)][:12]
+        prem = [
+            ln.strip(" -\t")
+            for ln in premblk.splitlines()
+            if ln.strip() and ("theorem" in ln or "lemma" in ln)
+        ][:12]
     brief = brief.replace("=== BRIEF ===", "").strip()
     ctx.brief = brief
     ctx.premises = prem
@@ -87,11 +97,13 @@ def _gather_context(ctx: T.Ctx) -> None:
 def plan_phase(ctx: T.Ctx, feedback: str) -> dict:
     residency.use(M.PLANNER_MODEL)
     P.prog(ctx.project_root, "PLAN (qwen)", phase="PLAN", model=M.PLANNER_MODEL)
-    user = (f"Node: {ctx.node}\nGoal:\n```lean\n{ctx.goal_src}\n```\n\n"
-            f"Context brief (gemma):\n{ctx.brief or '(none)'}\n\n"
-            f"Curated premises:\n{chr(10).join(ctx.premises) or '(none)'}\n\n"
-            + (f"PRIOR ATTEMPT FAILED. Lean feedback to address:\n{feedback}\n\n" if feedback else "")
-            + "Probe if needed, then emit the plan.")
+    user = (
+        f"Node: {ctx.node}\nGoal:\n```lean\n{ctx.goal_src}\n```\n\n"
+        f"Context brief (gemma):\n{ctx.brief or '(none)'}\n\n"
+        f"Curated premises:\n{chr(10).join(ctx.premises) or '(none)'}\n\n"
+        + (f"PRIOR ATTEMPT FAILED. Lean feedback to address:\n{feedback}\n\n" if feedback else "")
+        + "Probe if needed, then emit the plan."
+    )
     try:
         ag = pai_agents.planner()
         result = M.run_sync(ag, "qwen", user, deps=ctx, max_tokens=P.QWEN_GEN, temperature=0.3)
@@ -100,9 +112,12 @@ def plan_phase(ctx: T.Ctx, feedback: str) -> dict:
         return plan.model_dump()
     except Exception as e:  # noqa: BLE001
         P.LOG.warning("PLAN qwen PydanticAI call failed (%s) -> fallback direct", e)
-        return {"mode": "prove", "direct": True,
-                "leaves": [{"name": ctx.node, "goal_spec": ctx.goal_src, "sketch": ""}],
-                "parent_proof": ""}
+        return {
+            "mode": "prove",
+            "direct": True,
+            "leaves": [{"name": ctx.node, "goal_spec": ctx.goal_src, "sketch": ""}],
+            "parent_proof": "",
+        }
 
 
 # ---------------- PROVE phase (oprover, resident burst) ----------------
@@ -115,14 +130,18 @@ def prove_phase(ctx: T.Ctx, plan: dict, deadline: float | None) -> tuple[str, di
         neg = P.build_negation_goal(ctx.goal_src)
         if neg:
             P.prog(ctx.project_root, "refute: attempting counterexample")
-            cex = P.prove_leaf(neg, ctx.project_root, "", ctx.premises, rounds=4, width=1, deadline=deadline)
+            cex = P.prove_leaf(
+                neg, ctx.project_root, "", ctx.premises, rounds=4, width=1, deadline=deadline
+            )
             if cex:
                 return "FALSE", {}, ""
 
     direct = plan.get("direct", True)
     leaves = plan.get("leaves") or [{"name": ctx.node, "goal_spec": ctx.goal_src, "sketch": ""}]
     if direct:  # prove the node statement itself (ignore model-supplied spec — use the real goal)
-        leaves = [{"name": ctx.node, "goal_spec": ctx.goal_src, "sketch": leaves[0].get("sketch", "")}]
+        leaves = [
+            {"name": ctx.node, "goal_spec": ctx.goal_src, "sketch": leaves[0].get("sketch", "")}
+        ]
 
     proved: dict = {}
     feedback = ""
@@ -132,8 +151,15 @@ def prove_phase(ctx: T.Ctx, plan: dict, deadline: float | None) -> tuple[str, di
         spec = leaf.get("goal_spec") or ctx.goal_src
         name = leaf.get("name", "leaf")
         P.prog(ctx.project_root, f"prove leaf {name}")
-        proof = P.prove_leaf(spec, ctx.project_root, leaf.get("sketch", ""), ctx.premises,
-                             rounds=6, width=1, deadline=deadline)
+        proof = P.prove_leaf(
+            spec,
+            ctx.project_root,
+            leaf.get("sketch", ""),
+            ctx.premises,
+            rounds=6,
+            width=1,
+            deadline=deadline,
+        )
         proved[name] = proof
         if not proof:
             # REFUTE-ON-STUCK (Aristotle lesson): a model-invented helper that won't prove may be
@@ -143,8 +169,19 @@ def prove_phase(ctx: T.Ctx, plan: dict, deadline: float | None) -> tuple[str, di
             # Skip for the direct node goal (the user's statement; axiom-backed ones are refuted upfront).
             if not direct:
                 neg = P.build_negation_goal(spec)
-                cex = P.prove_leaf(neg, ctx.project_root, "", ctx.premises,
-                                   rounds=3, width=1, deadline=deadline) if neg else None
+                cex = (
+                    P.prove_leaf(
+                        neg,
+                        ctx.project_root,
+                        "",
+                        ctx.premises,
+                        rounds=3,
+                        width=1,
+                        deadline=deadline,
+                    )
+                    if neg
+                    else None
+                )
                 if cex:
                     feedback += f"\nleaf {name} is FALSE (counterexample found) — DROP or RESTATE it; the decomposition is wrong."
                     P.prog(ctx.project_root, f"leaf {name} REFUTED (mis-stated)")
@@ -162,14 +199,21 @@ def assemble_and_gate(ctx: T.Ctx, plan: dict, proved: dict) -> tuple[bool, str]:
         return _gate(ctx, cand)
     if any(v is None for v in proved.values()) or not proved:
         return False, "not all helper leaves proved"
-    bodies = "\n\n".join(_strip_imports(proved[lf["name"]]) for lf in plan["leaves"] if proved.get(lf["name"]))
+    bodies = "\n\n".join(
+        _strip_imports(proved[lf["name"]]) for lf in plan["leaves"] if proved.get(lf["name"])
+    )
     parent_proof = (plan.get("parent_proof") or "").strip()
     if not parent_proof:
         return False, "no parent_proof to assemble helpers"
     if not parent_proof.startswith("by"):
         parent_proof = "by " + parent_proof
-    cand = (P._imports_of(ctx.goal_src) + "\n\n" + bodies + "\n\n"
-            + f"{_node_statement(ctx.goal_src)} := {parent_proof}\n")
+    cand = (
+        P._imports_of(ctx.goal_src)
+        + "\n\n"
+        + bodies
+        + "\n\n"
+        + f"{_node_statement(ctx.goal_src)} := {parent_proof}\n"
+    )
     return _gate(ctx, cand)
 
 
@@ -180,20 +224,33 @@ def _gate(ctx: T.Ctx, cand: str) -> tuple[bool, str]:
 
 
 # ---------------- orchestrator ----------------
-def run(node: str, project_root: Path, *, max_hours: float, max_steps: int, allow_cloud: bool) -> str:
+def run(
+    node: str, project_root: Path, *, max_hours: float, max_steps: int, allow_cloud: bool
+) -> str:
     proof_dir = project_root / "proofs" / node
     attempt_file = proof_dir / "attempt.lean"
     if not attempt_file.exists():
         print(f"RESULT: NOT PROVED (no proofs/{node}/attempt.lean)")
         return "UNPROVED"
-    ctx = T.Ctx(project_root=project_root, node=node, proof_dir=proof_dir,
-                attempt_file=attempt_file, goal_src=attempt_file.read_text(encoding="utf-8"),
-                allow_cloud=allow_cloud)
+    ctx = T.Ctx(
+        project_root=project_root,
+        node=node,
+        proof_dir=proof_dir,
+        attempt_file=attempt_file,
+        goal_src=attempt_file.read_text(encoding="utf-8"),
+        allow_cloud=allow_cloud,
+    )
     logpath = P.init_log(project_root)
     deadline = (time.time() + max_hours * 3600.0) if max_hours > 0 else None
-    P.init_progress(project_root, task=f"agent:{node}", mode="phase-batched",
-                    budget=(f"{max_hours}h" if deadline else f"{max_steps} iters"))
-    P.LOG.info("=== phase-batched agent node=%s iters<=%d deadline=%s ===", node, max_steps, bool(deadline))
+    P.init_progress(
+        project_root,
+        task=f"agent:{node}",
+        mode="phase-batched",
+        budget=(f"{max_hours}h" if deadline else f"{max_steps} iters"),
+    )
+    P.LOG.info(
+        "=== phase-batched agent node=%s iters<=%d deadline=%s ===", node, max_steps, bool(deadline)
+    )
     M.ensure_mtplx()
     residency.free()  # clean slate: no model resident
 
@@ -214,36 +271,70 @@ def run(node: str, project_root: Path, *, max_hours: float, max_steps: int, allo
                 plan["mode"] = "refute_then_prove"  # force refute-first on axiom-backed nodes
             status, proved, fb = prove_phase(ctx, plan, deadline)
             if status == "FALSE":
-                P.prog(project_root, "counterexample — FALSE", phase="DONE", status="unproved", result="FALSE")
+                P.prog(
+                    project_root,
+                    "counterexample — FALSE",
+                    phase="DONE",
+                    status="unproved",
+                    result="FALSE",
+                )
                 print(f"RESULT: FALSE (counterexample)  (node {node}; log {logpath})")
                 return "FALSE"
             ok, msg = assemble_and_gate(ctx, plan, proved)
             if ok:
-                P.prog(project_root, "final_verify CLEAN — PROVED", phase="DONE", status="proved", result="PROVED")
+                P.prog(
+                    project_root,
+                    "final_verify CLEAN — PROVED",
+                    phase="DONE",
+                    status="proved",
+                    result="PROVED",
+                )
                 print(f"RESULT: PROVED  (node {node}; log {logpath})")
                 return "PROVED"
             feedback = (fb + "\n" + msg)[-4000:]
             refute_flag = False  # only force refute on the first iteration
-            P.LOG.info("iteration %d not closed; feedback head: %s", it, msg.splitlines()[0][:160] if msg else "")
+            P.LOG.info(
+                "iteration %d not closed; feedback head: %s",
+                it,
+                msg.splitlines()[0][:160] if msg else "",
+            )
     finally:
         residency.free()  # free memory at end of run
 
-    P.prog(project_root, "budget exhausted — UNPROVED", phase="DONE", status="unproved", result="UNPROVED")
+    P.prog(
+        project_root,
+        "budget exhausted — UNPROVED",
+        phase="DONE",
+        status="unproved",
+        result="UNPROVED",
+    )
     print(f"RESULT: NOT PROVED (budget)  (node {node}; log {logpath})")
     return "UNPROVED"
 
 
 def main() -> None:
     import argparse
+
     ap = argparse.ArgumentParser()
-    ap.add_argument("--node", required=True, help="prove proofs/<NODE>/attempt.lean (phase-batched)")
-    ap.add_argument("--project-root", default=str(Path.home() / "projects" / "lean-runtime-analysis"))
-    ap.add_argument("--max-hours", type=float, default=0.0, help="wall-clock budget (0 = use --max-steps)")
+    ap.add_argument(
+        "--node", required=True, help="prove proofs/<NODE>/attempt.lean (phase-batched)"
+    )
+    ap.add_argument(
+        "--project-root", default=str(Path.home() / "projects" / "lean-runtime-analysis")
+    )
+    ap.add_argument(
+        "--max-hours", type=float, default=0.0, help="wall-clock budget (0 = use --max-steps)"
+    )
     ap.add_argument("--max-steps", type=int, default=6, help="outer PLAN/PROVE iterations")
     ap.add_argument("--allow-cloud-escalation", action="store_true")
     a = ap.parse_args()
-    run(a.node, Path(a.project_root), max_hours=a.max_hours, max_steps=a.max_steps,
-        allow_cloud=a.allow_cloud_escalation)
+    run(
+        a.node,
+        Path(a.project_root),
+        max_hours=a.max_hours,
+        max_steps=a.max_steps,
+        allow_cloud=a.allow_cloud_escalation,
+    )
 
 
 if __name__ == "__main__":

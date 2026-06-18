@@ -21,6 +21,7 @@ These Proxy wrappers provide live reactivity over `project.data` arrays/records.
 Monolithic CSS file. Could split into per-component or per-section files imported via `@import` or Svelte `<style>` blocks.
 
 **Why it's monolithic:** CSS custom properties (design tokens) are defined at `:root` and referenced throughout. Splitting would require either:
+
 1. Importing all partials into a main file (adds indirection)
 2. Moving component-specific styles into `<style>` blocks (duplicates design tokens)
 
@@ -33,18 +34,22 @@ Monolithic CSS file. Could split into per-component or per-section files importe
 ## Summary of Completed Simplification
 
 **Phase 1:** Dead code removal
+
 - Removed `SAMPLE_PROJECT` / `ACTIVE_AGENT` dead proxies
 - Removed unimplemented `force` layout option
 
 **Phase 2:** Latent bug prevention
+
 - Removed all 9 `all: unset` instances (global button reset handles normalization)
 
 **Phase 3:** Inline style extraction
+
 - Extracted ~50 static inline styles to utility classes
 - PremisePicker: 14 → 0 remaining
 - All other components: only dynamic styles remain
 
 **Phase 4:** Configurability audit
+
 - Removed untested light theme (103 lines of CSS)
 - Removed untested density toggle (unused CSS variables)
 - Dark theme is now the only theme

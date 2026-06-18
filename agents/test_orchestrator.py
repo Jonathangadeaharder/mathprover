@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 import dag as D
 import orchestrator as O
-import tools as T
 
 
 class OrchestratorTests(unittest.TestCase):
@@ -37,7 +36,7 @@ class OrchestratorTests(unittest.TestCase):
         # Mock final verify and axiom check
         mock_final_verify.return_value = (True, "gate clean")
         mock_axiom_check.return_value.combined = "depends on axioms: [propext, Classical.choice]"
-        
+
         # Mock AG phases
         mock_ag._axiom_backed.return_value = False
         mock_ag._gather_context.return_value = None
@@ -61,7 +60,7 @@ class OrchestratorTests(unittest.TestCase):
                 )
             },
         )
-        
+
         # Run orchestrator schedule
         O.schedule(self.root, dag, max_hours=1.0, max_nodes=1, allow_research=False)
 
@@ -98,7 +97,7 @@ class OrchestratorTests(unittest.TestCase):
                 )
             },
         )
-        
+
         O.schedule(self.root, dag, max_hours=1.0, max_nodes=1, allow_research=False)
 
         # The leaf should be refuted
@@ -130,7 +129,7 @@ class OrchestratorTests(unittest.TestCase):
         # Stage 1: Leaf proving mock setup
         mock_ag._axiom_backed.return_value = False
         mock_ag._gather_context.return_value = None
-        
+
         # First plan returns a decomposition (direct=False)
         def plan_side_effect(ctx, feedback):
             if ctx.node == "parent":
@@ -139,7 +138,7 @@ class OrchestratorTests(unittest.TestCase):
                     "direct": False,
                     "leaves": [
                         {"name": "child1", "goal_spec": "theorem child1 : True := by sorry"},
-                        {"name": "child2", "goal_spec": "theorem child2 : True := by sorry"}
+                        {"name": "child2", "goal_spec": "theorem child2 : True := by sorry"},
                     ],
                     "parent_proof": "by exact child1 child2",
                 }
@@ -150,13 +149,19 @@ class OrchestratorTests(unittest.TestCase):
                     "leaves": [{"name": ctx.node, "goal_spec": ctx.goal_src, "sketch": ""}],
                     "parent_proof": "",
                 }
+
         mock_ag.plan_phase.side_effect = plan_side_effect
 
         def prove_side_effect(ctx, plan, deadline):
             if ctx.node == "parent":
-                return "DONE-CANDIDATE", {"parent__child1": "proof1", "parent__child2": "proof2"}, ""
+                return (
+                    "DONE-CANDIDATE",
+                    {"parent__child1": "proof1", "parent__child2": "proof2"},
+                    "",
+                )
             else:
                 return "DONE-CANDIDATE", {}, "unproved"
+
         mock_ag.prove_phase.side_effect = prove_side_effect
 
         def assemble_gate_side_effect(ctx, plan, proved):
@@ -164,6 +169,7 @@ class OrchestratorTests(unittest.TestCase):
                 return False, "stuck leaf -> decompose"
             else:
                 return False, "unproved"
+
         mock_ag.assemble_and_gate.side_effect = assemble_gate_side_effect
 
         # Set up parent DAG
@@ -195,7 +201,7 @@ class OrchestratorTests(unittest.TestCase):
         dag.nodes["parent__child1"].status = "proved"
         dag.nodes["parent__child1"].axioms = D.STD_AXIOMS
         dag.nodes["parent__child1"].proof_path = "proofs/parent__child1/attempt.lean"
-        
+
         dag.nodes["parent__child2"].status = "proved"
         dag.nodes["parent__child2"].axioms = D.STD_AXIOMS
         dag.nodes["parent__child2"].proof_path = "proofs/parent__child2/attempt.lean"
@@ -220,7 +226,7 @@ class OrchestratorTests(unittest.TestCase):
                 ),
             },
         )
-        
+
         # Save dag
         dpath = O._dag_path(self.root)
         dag.save(dpath)

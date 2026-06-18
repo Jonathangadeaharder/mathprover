@@ -22,7 +22,7 @@ from pathlib import Path
 LOG = logging.getLogger("mathprover.pipeline")  # share pipeline's handlers (init_log) so swaps log
 
 _LMS = str(Path.home() / ".local" / "bin" / "lms")
-_TTL = 3600          # seconds idle before LM Studio auto-unloads (insurance)
+_TTL = 3600  # seconds idle before LM Studio auto-unloads (insurance)
 _LOAD_TIMEOUT = 240  # generous: gemma-26B / qwen-27B cold load
 _current: str | None = None
 
@@ -95,7 +95,9 @@ def use(model: str) -> None:
         # Load failed; leave _current unset so the next use() retries the swap. chat() will still
         # try the request (JIT may load it) and its retry-on-400 covers the race.
         _current = None
-        LOG.warning("residency: load %s failed (unload ok=%s): %s", model, ok_u, out_l.strip()[:200])
+        LOG.warning(
+            "residency: load %s failed (unload ok=%s): %s", model, ok_u, out_l.strip()[:200]
+        )
     if telemetry:
         telemetry.record(
             "residency",

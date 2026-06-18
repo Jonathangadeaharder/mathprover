@@ -98,5 +98,3 @@ export const TERMS_BY_NAME: TermLookup = recordProxy(() => d().terms);
 // because they touch project.data which is $state.
 export const sampleProject = (): Project => d().project;
 export const activeAgent = (): LiveAgent | null => d().activeAgent;
-
-

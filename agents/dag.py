@@ -29,24 +29,26 @@ STD_AXIOMS = ["propext", "Classical.choice", "Quot.sound"]
 @dataclass
 class Node:
     id: str
-    statement: str = ""                 # self-contained lean (imports + open + sig := by sorry)
+    statement: str = ""  # self-contained lean (imports + open + sig := by sorry)
     status: str = "open"
     deps: list[str] = field(default_factory=list)
     parent_proof: str | None = None
     depth: int = 0
-    main_decl: str = ""                 # the node's primary theorem/lemma name
+    main_decl: str = ""  # the node's primary theorem/lemma name
     provides: list[str] = field(default_factory=list)  # all decl names this node defines
     premises: list[str] = field(default_factory=list)
     brief: str = ""
-    report: str = ""                    # path to IterResearch proof-state report (research nodes)
-    proof_path: str = ""                # gate-clean artifact when proved
-    folder: str = ""                    # proofs/<id>
+    report: str = ""  # path to IterResearch proof-state report (research nodes)
+    proof_path: str = ""  # gate-clean artifact when proved
+    folder: str = ""  # proofs/<id>
     attempts: list[dict] = field(default_factory=list)
     axioms: list[str] = field(default_factory=list)  # #print axioms when proved
 
 
 # ---------- signature / decl extraction (mechanical, no model) ----------
-_DECL_RE = re.compile(r"^\s*(?:noncomputable\s+|private\s+|protected\s+)*(?:theorem|lemma)\s+([A-Za-z0-9_'.]+)", re.M)
+_DECL_RE = re.compile(
+    r"^\s*(?:noncomputable\s+|private\s+|protected\s+)*(?:theorem|lemma)\s+([A-Za-z0-9_'.]+)", re.M
+)
 _SIG_RE = re.compile(r"\b(?:theorem|lemma)\b.*?(?=:=)", re.DOTALL)
 
 
@@ -84,14 +86,14 @@ class DAG:
         os.replace(tmp, path)
 
     @classmethod
-    def load(cls, path: Path) -> "DAG":
+    def load(cls, path: Path) -> DAG:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         nodes = {k: Node(**v) for k, v in data.get("nodes", {}).items()}
         return cls(goal=data.get("goal", ""), nodes=nodes)
 
     # ----- seeding from the existing proofs/ tree -----
     @classmethod
-    def seed_from_proofs(cls, project_root: Path, goal: str = "") -> "DAG":
+    def seed_from_proofs(cls, project_root: Path, goal: str = "") -> DAG:
         proofs = Path(project_root) / "proofs"
         raw: dict[str, dict] = {}
         for d in sorted(proofs.iterdir()):
@@ -115,11 +117,20 @@ class DAG:
                 decl_owner.setdefault(name, nid)
         nodes: dict[str, Node] = {}
         for nid, r in raw.items():
-            deps = sorted({decl_owner[name] for name in r["body_ids"]
-                           if name in decl_owner and decl_owner[name] != nid})
+            deps = sorted(
+                {
+                    decl_owner[name]
+                    for name in r["body_ids"]
+                    if name in decl_owner and decl_owner[name] != nid
+                }
+            )
             nodes[nid] = Node(
-                id=nid, statement=r["src"], status=("open" if r["open"] else "proved"),
-                deps=deps, main_decl=r["main"], provides=r["decls"],
+                id=nid,
+                statement=r["src"],
+                status=("open" if r["open"] else "proved"),
+                deps=deps,
+                main_decl=r["main"],
+                provides=r["decls"],
                 folder=f"proofs/{nid}",
                 proof_path=("" if r["open"] else f"proofs/{nid}/attempt.lean"),
             )
@@ -140,15 +151,17 @@ class DAG:
     # ----- graph ops -----
     def _compute_depths(self) -> None:
         memo: dict[str, int] = {}
+
         def depth(nid: str, stack: frozenset[str]) -> int:
             if nid in memo:
                 return memo[nid]
-            if nid in stack:               # cycle guard (shouldn't happen): break it
+            if nid in stack:  # cycle guard (shouldn't happen): break it
                 return 0
             deps = [d for d in self.nodes[nid].deps if d in self.nodes]
             d = 0 if not deps else 1 + max(depth(x, stack | {nid}) for x in deps)
             memo[nid] = d
             return d
+
         for nid, node in self.nodes.items():
             node.depth = depth(nid, frozenset())
 
@@ -158,8 +171,9 @@ class DAG:
     def ready(self, nid: str) -> bool:
         """An open node is ready iff every dep (that exists in the DAG) is proved."""
         n = self.nodes[nid]
-        return n.status in {"open", "context", "planning", "proving"} and \
-            all(self.proved(d) for d in n.deps if d in self.nodes)
+        return n.status in {"open", "context", "planning", "proving"} and all(
+            self.proved(d) for d in n.deps if d in self.nodes
+        )
 
     def frontier(self) -> list[str]:
         return [nid for nid in self.nodes if self.ready(nid)]
@@ -211,30 +225,36 @@ class DAG:
             by[n.status] = by.get(n.status, 0) + 1
         edges = sum(len(n.deps) for n in self.nodes.values())
         leaves = [nid for nid, n in self.nodes.items() if not n.deps]
-        roots = [nid for nid in self.nodes
-                 if not any(nid in m.deps for m in self.nodes.values())]
-        lines = [f"goal: {self.goal or '(unset)'}",
-                 f"nodes: {len(self.nodes)}  edges: {edges}  "
-                 f"max-depth: {max((n.depth for n in self.nodes.values()), default=0)}",
-                 f"status: {by}",
-                 f"frontier (ready): {len(self.frontier())}",
-                 f"roots (nothing depends on them): {len(roots)}  leaves (no deps): {len(leaves)}"]
+        roots = [nid for nid in self.nodes if not any(nid in m.deps for m in self.nodes.values())]
+        lines = [
+            f"goal: {self.goal or '(unset)'}",
+            f"nodes: {len(self.nodes)}  edges: {edges}  "
+            f"max-depth: {max((n.depth for n in self.nodes.values()), default=0)}",
+            f"status: {by}",
+            f"frontier (ready): {len(self.frontier())}",
+            f"roots (nothing depends on them): {len(roots)}  leaves (no deps): {len(leaves)}",
+        ]
         if self.goal:
             ok, bad = self.axiom_rollup()
             lines.append(f"goal closed: {ok}" + ("" if ok else f"  (blockers: {len(bad)})"))
             cp = self.critical_path()
-            lines.append(f"critical path ({len(cp)}): " + " -> ".join(cp[:8]) + ("…" if len(cp) > 8 else ""))
+            lines.append(
+                f"critical path ({len(cp)}): " + " -> ".join(cp[:8]) + ("…" if len(cp) > 8 else "")
+            )
         return "\n".join(lines)
 
 
 def main() -> None:
     import argparse
+
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("seed")
     s.add_argument("--root", default=str(Path.home() / "projects" / "lean-runtime-analysis"))
     s.add_argument("--goal", default="")
-    s.add_argument("--out", default=None, help="dag.json path (default <root>/.mathprover/dag/dag.json)")
+    s.add_argument(
+        "--out", default=None, help="dag.json path (default <root>/.mathprover/dag/dag.json)"
+    )
     sh = sub.add_parser("show")
     sh.add_argument("--dag", required=True)
     a = ap.parse_args()

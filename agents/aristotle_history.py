@@ -26,7 +26,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,14 +37,19 @@ def _aristotle_cli(*args: str, timeout: int = 60) -> str:
     cmd = ["aristotle", *args]
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout,
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
             env={**os.environ, "ARISTOTLE_API_KEY": os.environ.get("ARISTOTLE_API_KEY", "")},
         )
         return result.stdout
     except FileNotFoundError:
-        print("ERROR: `aristotle` CLI not found. Install with: uv tool install aristotlelib",
-              file=sys.stderr)
-        raise SystemExit(1)
+        print(
+            "ERROR: `aristotle` CLI not found. Install with: uv tool install aristotlelib",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from None
     except subprocess.TimeoutExpired:
         print(f"ERROR: aristotle {' '.join(args)} timed out after {timeout}s", file=sys.stderr)
         return ""
@@ -53,12 +57,14 @@ def _aristotle_cli(*args: str, timeout: int = 60) -> str:
 
 # ---------- structured event types ----------
 
+
 @dataclass
 class AristotleEvent:
     """One event from the Aristotle cloud prover event stream."""
+
     ts: str
-    event_type: str          # PROVING | THINKING | RUNNING_COMMAND | EDITING_FILE | REVIEWING | UNKNOWN
-    content: str             # raw event text
+    event_type: str  # PROVING | THINKING | RUNNING_COMMAND | EDITING_FILE | REVIEWING | UNKNOWN
+    content: str  # raw event text
     project_id: str = ""
     task_id: str = ""
 
@@ -69,8 +75,9 @@ class AristotleEvent:
 @dataclass
 class AristotleProjectSummary:
     """Summary of one Aristotle project."""
+
     project_id: str
-    status: str              # RUNNING | IDLE | UNKNOWN
+    status: str  # RUNNING | IDLE | UNKNOWN
     name: str = ""
     task_count: int = 0
     event_count: int = 0
@@ -83,9 +90,7 @@ class AristotleProjectSummary:
 
 # ---------- parsing ----------
 
-_EVENT_TYPE_RE = re.compile(
-    r"\b(PROVING|THINKING|RUNNING_COMMAND|EDITING_FILE|REVIEWING)\b"
-)
+_EVENT_TYPE_RE = re.compile(r"\b(PROVING|THINKING|RUNNING_COMMAND|EDITING_FILE|REVIEWING)\b")
 
 
 def parse_event_stream(raw: str, project_id: str = "") -> list[AristotleEvent]:
@@ -106,12 +111,14 @@ def parse_event_stream(raw: str, project_id: str = "") -> list[AristotleEvent]:
         # Skip boring lines (headers, separators, etc.)
         if event_type == "UNKNOWN" and len(line) < 20:
             continue
-        events.append(AristotleEvent(
-            ts=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            event_type=event_type,
-            content=line[:2000],
-            project_id=project_id,
-        ))
+        events.append(
+            AristotleEvent(
+                ts=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                event_type=event_type,
+                content=line[:2000],
+                project_id=project_id,
+            )
+        )
     return events
 
 
@@ -131,11 +138,13 @@ def list_projects(*, status: str = "", limit: int = 100) -> list[dict[str, str]]
         # Aristotle list output format: lines with project_id and status
         parts = line.split()
         if len(parts) >= 2:
-            projects.append({
-                "id": parts[0],
-                "status": parts[1] if len(parts) > 1 else "UNKNOWN",
-                "name": " ".join(parts[2:]) if len(parts) > 2 else "",
-            })
+            projects.append(
+                {
+                    "id": parts[0],
+                    "status": parts[1] if len(parts) > 1 else "UNKNOWN",
+                    "name": " ".join(parts[2:]) if len(parts) > 2 else "",
+                }
+            )
     return projects
 
 
@@ -174,13 +183,17 @@ def pull_all_projects(*, limit: int = 50, event_limit: int = 200) -> list[Aristo
             summaries.append(s)
         except Exception as exc:
             print(f"  ERROR pulling {pid}: {exc}", file=sys.stderr)
-            summaries.append(AristotleProjectSummary(
-                project_id=pid, status=p.get("status", "ERROR"),
-            ))
+            summaries.append(
+                AristotleProjectSummary(
+                    project_id=pid,
+                    status=p.get("status", "ERROR"),
+                )
+            )
     return summaries
 
 
 # ---------- storage ----------
+
 
 def _history_dir(project_root: Path | None = None) -> Path:
     if project_root:
@@ -199,8 +212,9 @@ def save_project_history(
     d = _history_dir(project_root)
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{summary.project_id}.json"
-    path.write_text(json.dumps(summary.to_dict(), indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8")
+    path.write_text(
+        json.dumps(summary.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return path
 
 
@@ -232,6 +246,7 @@ def list_saved_histories(project_root: Path | None = None) -> list[Path]:
 
 # ---------- export to trajectory-compatible JSONL ----------
 
+
 def export_to_trajectory_jsonl(
     summaries: list[AristotleProjectSummary],
     output_path: Path | None = None,
@@ -244,33 +259,35 @@ def export_to_trajectory_jsonl(
     rows: list[dict[str, Any]] = []
     for s in summaries:
         for ev in s.events:
-            rows.append({
-                "ts": ev.get("ts", ""),
-                "event": "aristotle_step",
-                "run_id": s.project_id,
-                "node_id": "",
-                "prover": "aristotle",
-                "round": 0,
-                "branch": -1,
-                "phase": "aristotle",
-                "prompt": {},
-                "model_output": "",
-                "candidate": None,
-                "compile_ok": None,
-                "compile_feedback": None,
-                "gate": ev.get("event_type", "UNKNOWN").lower(),
-                "prompt_tokens": None,
-                "completion_tokens": None,
-                "latency_s": None,
-                "temperature": None,
-                "max_tokens": None,
-                "metadata": {
-                    "project_id": s.project_id,
-                    "project_status": s.status,
-                    "event_content": ev.get("content", "")[:1000],
-                    "proving_pct": s.proving_pct,
-                },
-            })
+            rows.append(
+                {
+                    "ts": ev.get("ts", ""),
+                    "event": "aristotle_step",
+                    "run_id": s.project_id,
+                    "node_id": "",
+                    "prover": "aristotle",
+                    "round": 0,
+                    "branch": -1,
+                    "phase": "aristotle",
+                    "prompt": {},
+                    "model_output": "",
+                    "candidate": None,
+                    "compile_ok": None,
+                    "compile_feedback": None,
+                    "gate": ev.get("event_type", "UNKNOWN").lower(),
+                    "prompt_tokens": None,
+                    "completion_tokens": None,
+                    "latency_s": None,
+                    "temperature": None,
+                    "max_tokens": None,
+                    "metadata": {
+                        "project_id": s.project_id,
+                        "project_status": s.status,
+                        "event_content": ev.get("content", "")[:1000],
+                        "proving_pct": s.proving_pct,
+                    },
+                }
+            )
     output = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n"
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -280,16 +297,21 @@ def export_to_trajectory_jsonl(
 
 # ---------- CLI ----------
 
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Aristotle event stream analyzer")
     ap.add_argument("--root", default=None, help="Lean project root (for storage)")
     ap.add_argument("--list", action="store_true", help="List all Aristotle projects")
     ap.add_argument("--pull", metavar="PROJECT_ID", help="Pull events for one project")
     ap.add_argument("--pull-all", action="store_true", help="Pull events for all projects")
-    ap.add_argument("--export", action="store_true", help="Export saved histories to trajectory JSONL")
+    ap.add_argument(
+        "--export", action="store_true", help="Export saved histories to trajectory JSONL"
+    )
     ap.add_argument("--summary", action="store_true", help="Summary of saved histories")
     ap.add_argument("--output", default=None, help="Output path (for --export)")
-    ap.add_argument("--event-limit", type=int, default=200, help="Max events per project (default: 200)")
+    ap.add_argument(
+        "--event-limit", type=int, default=200, help="Max events per project (default: 200)"
+    )
     args = ap.parse_args()
 
     root = Path(args.root).resolve() if args.root else None
@@ -306,9 +328,13 @@ def main() -> None:
         s = pull_project(args.pull, event_limit=args.event_limit)
         path = save_project_history(s, project_root=root)
         print(f"Pulled {s.event_count} events for {s.project_id} -> {path}")
-        print(f"  Proving: {s.proving_pct}%  Events by type: "
-              + ", ".join(f"{k}={sum(1 for e in s.events if e.get('event_type') == k)}"
-                          for k in ("PROVING", "THINKING", "RUNNING_COMMAND", "EDITING_FILE", "REVIEWING")))
+        print(
+            f"  Proving: {s.proving_pct}%  Events by type: "
+            + ", ".join(
+                f"{k}={sum(1 for e in s.events if e.get('event_type') == k)}"
+                for k in ("PROVING", "THINKING", "RUNNING_COMMAND", "EDITING_FILE", "REVIEWING")
+            )
+        )
         return
 
     if args.pull_all:
@@ -323,14 +349,16 @@ def main() -> None:
         summaries: list[AristotleProjectSummary] = []
         for h in histories:
             data = json.loads(h.read_text(encoding="utf-8"))
-            summaries.append(AristotleProjectSummary(
-                project_id=data["project_id"],
-                status=data.get("status", "UNKNOWN"),
-                name=data.get("name", ""),
-                event_count=data.get("event_count", 0),
-                proving_pct=data.get("proving_pct", 0.0),
-                events=data.get("events", []),
-            ))
+            summaries.append(
+                AristotleProjectSummary(
+                    project_id=data["project_id"],
+                    status=data.get("status", "UNKNOWN"),
+                    name=data.get("name", ""),
+                    event_count=data.get("event_count", 0),
+                    proving_pct=data.get("proving_pct", 0.0),
+                    events=data.get("events", []),
+                )
+            )
         output_path = Path(args.output) if args.output else None
         out = export_to_trajectory_jsonl(summaries, output_path=output_path)
         if not output_path:

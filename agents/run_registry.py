@@ -13,7 +13,7 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def is_stale_run(run: "RunRecord") -> bool:
+def is_stale_run(run: RunRecord) -> bool:
     if run.status not in {"pending", "running"}:
         return False
     twelve_hours = 12 * 60 * 60

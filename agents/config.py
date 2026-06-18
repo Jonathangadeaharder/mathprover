@@ -103,7 +103,9 @@ def load_config(project_root: Path | None = None) -> MathProverConfig:
             type=block["type"],
             command=expand_config_value(block.get("command", "")),
             model=str(block.get("model", "")),
-            base_url=expand_config_value(block.get("base_url", "")) if block.get("base_url") else "",
+            base_url=expand_config_value(block.get("base_url", ""))
+            if block.get("base_url")
+            else "",
             max_attempts=int(block.get("max_attempts", 4)),
             max_tokens=int(block.get("max_tokens", 32768)),
             correction_rounds=int(block.get("correction_rounds", 2)),

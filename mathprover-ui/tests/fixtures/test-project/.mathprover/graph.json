@@ -28,7 +28,11 @@
       "paper_file": "paper/sections/runtime.tex",
       "paper_section": "5.4",
       "status": "IN_PROGRESS",
-      "depends_on": ["CRN_R1_kernel_founder_mass", "CRN_R2_founder_mass_scaling", "A3a_core"],
+      "depends_on": [
+        "CRN_R1_kernel_founder_mass",
+        "CRN_R2_founder_mass_scaling",
+        "A3a_core"
+      ],
       "uses_defs": ["def_CRN", "def_runtime"],
       "importance": 1.0,
       "difficulty": "hard",
@@ -270,7 +274,11 @@
       "signature": "structure CRN where ...",
       "description": "A chemical reaction network is a pair (S, R) where S is a set of species and R is a set of reactions.",
       "depends_on": [],
-      "used_in": ["CRN_constant_ratio_runtime", "CRN_R1_kernel_founder_mass", "B1_discrete_step_bound"]
+      "used_in": [
+        "CRN_constant_ratio_runtime",
+        "CRN_R1_kernel_founder_mass",
+        "B1_discrete_step_bound"
+      ]
     },
     {
       "id": "def_runtime",
@@ -368,9 +376,15 @@
   ],
   "paperBlocks": [
     { "kind": "heading", "text": "1. Introduction" },
-    { "kind": "para", "text": "Chemical reaction networks (CRNs) are a formal model for molecular computation." },
+    {
+      "kind": "para",
+      "text": "Chemical reaction networks (CRNs) are a formal model for molecular computation."
+    },
     { "kind": "heading", "text": "2. Preliminaries" },
-    { "kind": "para", "text": "We define the basic notions of CRNs and runtime." },
+    {
+      "kind": "para",
+      "text": "We define the basic notions of CRNs and runtime."
+    },
     {
       "kind": "thm",
       "label": "Lemma 2.1",
@@ -416,9 +430,22 @@
     }
   ],
   "terms": {
-    "CRN": { "type": "structure", "desc": "Chemical Reaction Network", "src": "Test/Defs/CRN.lean:5" },
-    "founder": { "type": "inductive", "desc": "Founder species", "src": "Test/Defs/Founder.lean:3", "nodeId": "CRN_R1_kernel_founder_mass" },
-    "runtime": { "type": "def", "desc": "Runtime function", "src": "Test/Defs/Runtime.lean:10" }
+    "CRN": {
+      "type": "structure",
+      "desc": "Chemical Reaction Network",
+      "src": "Test/Defs/CRN.lean:5"
+    },
+    "founder": {
+      "type": "inductive",
+      "desc": "Founder species",
+      "src": "Test/Defs/Founder.lean:3",
+      "nodeId": "CRN_R1_kernel_founder_mass"
+    },
+    "runtime": {
+      "type": "def",
+      "desc": "Runtime function",
+      "src": "Test/Defs/Runtime.lean:10"
+    }
   },
   "failures": [
     {

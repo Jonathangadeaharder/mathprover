@@ -33,14 +33,18 @@ def _load(path: Path) -> list[float]:
         return []
 
 
-def check_and_record(project_root: Path, *, per_minute: int = PER_MINUTE, per_day: int = PER_DAY) -> None:
+def check_and_record(
+    project_root: Path, *, per_minute: int = PER_MINUTE, per_day: int = PER_DAY
+) -> None:
     """Raise RateLimitError if a new Aristotle request would exceed limits; else record it."""
     path = _state_path(project_root)
     now = time.time()
     stamps = [t for t in _load(path) if now - t < 86400.0]  # keep last day
     last_minute = sum(1 for t in stamps if now - t < 60.0)
     if last_minute >= per_minute:
-        raise RateLimitError(f"Aristotle per-minute limit reached ({per_minute}/min); retry shortly.")
+        raise RateLimitError(
+            f"Aristotle per-minute limit reached ({per_minute}/min); retry shortly."
+        )
     if len(stamps) >= per_day:
         raise RateLimitError(f"Aristotle daily limit reached ({per_day}/day); resets within 24h.")
     stamps.append(now)

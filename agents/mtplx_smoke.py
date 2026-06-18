@@ -28,7 +28,9 @@ def _request(base_url: str, path: str, payload: dict | None = None) -> tuple[flo
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Smoke-test MTPLX /v1/models and chat completions.")
+    parser = argparse.ArgumentParser(
+        description="Smoke-test MTPLX /v1/models and chat completions."
+    )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--chat", action="store_true", help="Also run a minimal chat completion.")
@@ -39,7 +41,11 @@ def main() -> None:
     except urllib.error.URLError as exc:
         raise SystemExit(f"MTPLX /models failed at {args.base_url}: {exc}") from exc
     print(json.dumps({"check": "models", "latency_s": round(dt, 3), "ok": True}, indent=2))
-    names = [m.get("id") for m in models.get("data", []) if isinstance(m, dict)]
+    names = [
+        m["id"]
+        for m in models.get("data", [])
+        if isinstance(m, dict) and isinstance(m.get("id"), str)
+    ]
     if names:
         print("models:", ", ".join(names[:8]))
 
@@ -59,15 +65,22 @@ def main() -> None:
                 f"HTTP {exc.code} {exc.reason}; {body[:500]}"
             ) from exc
         usage = out.get("usage") or {}
-        completion = (((out.get("choices") or [{}])[0].get("message") or {}).get("content") or "")
+        completion = ((out.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
         completion_tokens = usage.get("completion_tokens")
-        print(json.dumps({
-            "check": "chat",
-            "latency_s": round(dt, 3),
-            "completion_tokens": completion_tokens,
-            "tokens_per_s": round(completion_tokens / dt, 3) if completion_tokens and dt > 0 else None,
-            "content": completion,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "check": "chat",
+                    "latency_s": round(dt, 3),
+                    "completion_tokens": completion_tokens,
+                    "tokens_per_s": round(completion_tokens / dt, 3)
+                    if completion_tokens and dt > 0
+                    else None,
+                    "content": completion,
+                },
+                indent=2,
+            )
+        )
 
 
 if __name__ == "__main__":

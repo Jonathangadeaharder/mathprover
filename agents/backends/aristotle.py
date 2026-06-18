@@ -10,6 +10,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+import trajectory  # noqa: E402
 from config import ProverConfig
 from lean_pipeline import (
     compile_lean_file,
@@ -18,7 +19,6 @@ from lean_pipeline import (
     forbidden_placeholders,
 )
 from prompts import build_aristotle_prompt
-import trajectory  # noqa: E402
 
 
 @dataclass
@@ -112,8 +112,13 @@ async def _run_aristotle_async(
             _traj_node = attempt_file.parent.name
             _traj_run = log_path.stem
             trajectory.record_proving_step(
-                run_id=_traj_run, node_id=_traj_node, prover="aristotle",
-                round=0, branch=-1, phase="generate", gate="query",
+                run_id=_traj_run,
+                node_id=_traj_node,
+                prover="aristotle",
+                round=0,
+                branch=-1,
+                phase="generate",
+                gate="query",
                 prompt={"system": "", "user": prompt[:4000]},
                 metadata={"phase": "submit"},
                 project_root=project_root,
@@ -168,12 +173,19 @@ async def _run_aristotle_async(
 
             # Trajectory: record the cloud result
             trajectory.record_proving_step(
-                run_id=_traj_run, node_id=_traj_node, prover="aristotle",
-                round=0, branch=-1, phase="compile",
+                run_id=_traj_run,
+                node_id=_traj_node,
+                prover="aristotle",
+                round=0,
+                branch=-1,
+                phase="compile",
                 gate="aristotle_" + task.status.name.lower(),
-                metadata={"project_id": project_id, "task_id": task.agent_task_id,
-                          "final_status": task.status.name,
-                          "output_summary": (task.output_summary or "")[:1000]},
+                metadata={
+                    "project_id": project_id,
+                    "task_id": task.agent_task_id,
+                    "final_status": task.status.name,
+                    "output_summary": (task.output_summary or "")[:1000],
+                },
                 project_root=project_root,
             )
 

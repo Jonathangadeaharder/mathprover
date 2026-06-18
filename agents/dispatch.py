@@ -288,9 +288,12 @@ def main() -> None:
     parser.add_argument("--skip-verify", action="store_true", help="Skip lake build verify")
     parser.add_argument("--run-id", default=None, help="Pre-assigned run id (for async dispatch)")
     parser.add_argument(
-        "--refute-first", type=int, default=0, metavar="N",
+        "--refute-first",
+        type=int,
+        default=0,
+        metavar="N",
         help="Before dispatching, spend N local rounds trying to DISPROVE the node; "
-             "if a counterexample is found, report FALSE and do not run the prover.",
+        "if a counterexample is found, report FALSE and do not run the prover.",
     )
     args = parser.parse_args()
 
@@ -302,10 +305,16 @@ def main() -> None:
             folder = resolve_proof_folder(args.node, config.project_root)
             cex = refute_node(config.project_root, folder, args.refute_first)
             if cex:
-                append_status(config.project_root / "proofs" / folder,
-                              prover="refute", ok=False, log_rel="(local refutation)")
-                print("RESULT: FALSE — counterexample found; statement is not provable as stated. "
-                      "Not dispatching the prover.")
+                append_status(
+                    config.project_root / "proofs" / folder,
+                    prover="refute",
+                    ok=False,
+                    log_rel="(local refutation)",
+                )
+                print(
+                    "RESULT: FALSE — counterexample found; statement is not provable as stated. "
+                    "Not dispatching the prover."
+                )
                 raise SystemExit(3)
             print("refute-first: no counterexample within budget; dispatching prover.")
         code = dispatch_with_config(

@@ -146,7 +146,9 @@ def has_sorry(text: str) -> bool:
     return bool(re.search(r"\bsorry\b", strip_lean_comments(text)))
 
 
-FORBIDDEN_PLACEHOLDER_RE = re.compile(r"(?<![A-Za-z0-9_'.])(sorry|admit|exact\?|sorryAx)(?![A-Za-z0-9_'.])")
+FORBIDDEN_PLACEHOLDER_RE = re.compile(
+    r"(?<![A-Za-z0-9_'.])(sorry|admit|exact\?|sorryAx)(?![A-Za-z0-9_'.])"
+)
 AXIOM_DECL_RE = re.compile(r"^\s*axiom\s+[A-Za-z0-9_'.]+", re.M)
 DECL_NAME_RE = re.compile(r"\b(?:theorem|lemma)\s+([A-Za-z0-9_'.]+)")
 STANDARD_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}

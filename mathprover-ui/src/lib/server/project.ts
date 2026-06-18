@@ -79,10 +79,14 @@ export function resolveProjectRoot(raw?: string | null): string {
     const canonical = realpathSafe(resolved);
     const permitted = allowedRoots();
     if (!permitted.some((root) => isUnderAllowedRoot(canonical, root))) {
-      throw new ProjectRootError(`Project path is not under allowed roots: ${canonical}`);
+      throw new ProjectRootError(
+        `Project path is not under allowed roots: ${canonical}`,
+      );
     }
     if (!hasProjectMarker(canonical)) {
-      throw new ProjectRootError(`Not a Lean/MathProver project (missing lakefile.lean): ${canonical}`);
+      throw new ProjectRootError(
+        `Not a Lean/MathProver project (missing lakefile.lean): ${canonical}`,
+      );
     }
     return canonical;
   }
@@ -91,7 +95,7 @@ export function resolveProjectRoot(raw?: string | null): string {
   if (detected) return detected;
 
   throw new ProjectRootError(
-    "No project found. Set ?project=<path> or MATHPROVER_PROJECT_PATH, or place a project under ~/projects."
+    "No project found. Set ?project=<path> or MATHPROVER_PROJECT_PATH, or place a project under ~/projects.",
   );
 }
 
@@ -107,10 +111,14 @@ function autoDetectProject(): string | null {
         try {
           const st = statSync(full);
           if (!st.isDirectory()) continue;
-        } catch { continue; }
+        } catch {
+          continue;
+        }
         if (hasProjectMarker(full)) candidates.push(full);
       }
-    } catch { /* root doesn't exist */ }
+    } catch {
+      /* root doesn't exist */
+    }
   }
 
   if (candidates.length === 0) return null;
@@ -161,7 +169,9 @@ async function readRunRegistry(root: string): Promise<RunRecord[]> {
     for (const file of files) {
       try {
         runs.push(
-          JSON.parse(await readFile(resolve(runsDir, file), "utf-8")) as RunRecord,
+          JSON.parse(
+            await readFile(resolve(runsDir, file), "utf-8"),
+          ) as RunRecord,
         );
       } catch {
         /* skip corrupt run records */
@@ -175,7 +185,8 @@ async function readRunRegistry(root: string): Promise<RunRecord[]> {
 
 function runStatus(run: RunRecord): TheoremNode["status"] {
   if (isStaleRun(run)) return "BLOCKED";
-  if (run.status === "pending" || run.status === "running") return "IN_PROGRESS";
+  if (run.status === "pending" || run.status === "running")
+    return "IN_PROGRESS";
   if (run.status === "ok") return "PROVEN";
   if (run.status === "failed" || run.status === "error") return "STUCK";
   return "UNEXPLORED";
@@ -209,11 +220,18 @@ function isClosedWorkerState(state: string | undefined): boolean {
 }
 
 function shouldRunOverrideNode(node: TheoremNode, run: RunRecord): boolean {
-  if (run.status === "pending" || run.status === "running") return !isStaleRun(run);
-  if (node.status === "PROVEN" && (run.status === "failed" || run.status === "error")) {
+  if (run.status === "pending" || run.status === "running")
+    return !isStaleRun(run);
+  if (
+    node.status === "PROVEN" &&
+    (run.status === "failed" || run.status === "error")
+  ) {
     return false;
   }
-  if (isClosedWorkerState(node.worker_state) && (run.status === "failed" || run.status === "error")) {
+  if (
+    isClosedWorkerState(node.worker_state) &&
+    (run.status === "failed" || run.status === "error")
+  ) {
     return false;
   }
   return true;
@@ -278,7 +296,9 @@ function syntheticNodeFromRun(run: RunRecord): TheoremNode {
     lean_file: `proofs/${run.proof_folder || id}/attempt.lean`,
     lean_line: null,
     paper_file: `proofs/${run.proof_folder || id}/paper_source.md`,
-    paper_section: parent ? `Supports ${parent}` : `Discovered node: ${folderLabel}`,
+    paper_section: parent
+      ? `Supports ${parent}`
+      : `Discovered node: ${folderLabel}`,
     status: runStatus(run),
     depends_on: [],
     uses_defs: [],
@@ -296,13 +316,22 @@ function syntheticNodeFromRun(run: RunRecord): TheoremNode {
 }
 
 function friendlyWorkerLabel(id: string): { short: string; desc: string } {
-  if (id.startsWith("CRN_R1_")) return { short: "R1", desc: `CRN R1 bridge: kernel founder mass` };
-  if (id.startsWith("CRN_R2_")) return { short: "R2", desc: `CRN R2 bridge: founder mass scaling` };
-  if (id.startsWith("CRN_R3_")) return { short: "R3", desc: `CRN R3 bridge: positive founder survival` };
-  if (id.startsWith("CRN_R4_")) return { short: "R4", desc: `CRN R4 bridge: robust-fill assembly` };
-  if (id === "A3a_core") return { short: "A3a", desc: `A3a core survival bound` };
-  if (id === "A3a_constant_ratio_bridge") return { short: "A3a-bridge", desc: `A3a constant-ratio bridge` };
-  return { short: id.split("_").slice(0, 2).join("_"), desc: `Worker node: ${humanizeId(id)}` };
+  if (id.startsWith("CRN_R1_"))
+    return { short: "R1", desc: `CRN R1 bridge: kernel founder mass` };
+  if (id.startsWith("CRN_R2_"))
+    return { short: "R2", desc: `CRN R2 bridge: founder mass scaling` };
+  if (id.startsWith("CRN_R3_"))
+    return { short: "R3", desc: `CRN R3 bridge: positive founder survival` };
+  if (id.startsWith("CRN_R4_"))
+    return { short: "R4", desc: `CRN R4 bridge: robust-fill assembly` };
+  if (id === "A3a_core")
+    return { short: "A3a", desc: `A3a core survival bound` };
+  if (id === "A3a_constant_ratio_bridge")
+    return { short: "A3a-bridge", desc: `A3a constant-ratio bridge` };
+  return {
+    short: id.split("_").slice(0, 2).join("_"),
+    desc: `Worker node: ${humanizeId(id)}`,
+  };
 }
 
 async function enrichGraphWithLiveRuns(
@@ -330,7 +359,10 @@ async function enrichGraphWithLiveRuns(
     const id = runNodeId(run);
     const parentId = parentGoalForRunNode(id);
     let node = byId.get(id) || byFolder.get(run.proof_folder);
-    if (!node && (run.status === "pending" || run.status === "running" || parentId)) {
+    if (
+      !node &&
+      (run.status === "pending" || run.status === "running" || parentId)
+    ) {
       node = syntheticNodeFromRun(run);
       nodes.push(node);
       byId.set(node.id, node);
@@ -358,7 +390,10 @@ async function enrichGraphWithLiveRuns(
     if (!node.note && node.proof_folder) {
       node.note = `Source folder: ${node.proof_folder}.`;
     }
-    if ((run.status === "pending" || run.status === "running") && !isStaleRun(run)) {
+    if (
+      (run.status === "pending" || run.status === "running") &&
+      !isStaleRun(run)
+    ) {
       node.status = "IN_PROGRESS";
       node.note = `${goalNote(id)}${run.prover} ${run.status} since ${run.started_at}; source ${runSource(run)}; folder ${run.proof_folder}`;
     } else if (isStaleRun(run)) {
@@ -374,7 +409,9 @@ async function enrichGraphWithLiveRuns(
   }
 
   const active = runs.find(
-    (run) => (run.status === "running" || run.status === "pending") && !isStaleRun(run),
+    (run) =>
+      (run.status === "running" || run.status === "pending") &&
+      !isStaleRun(run),
   );
   return {
     ...graph,

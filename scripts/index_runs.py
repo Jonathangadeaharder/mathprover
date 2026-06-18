@@ -183,7 +183,9 @@ def merge_attempts_into_graph(project_root: Path, graph: dict) -> dict:
             node["attempts"] = len(attempts)
         attach_proof_folders(project_root, [node])
 
-    active = next((r for r in runs if r.status in {"pending", "running"} and not is_stale_run(r)), None)
+    active = next(
+        (r for r in runs if r.status in {"pending", "running"} and not is_stale_run(r)), None
+    )
     if active:
         graph["activeAgent"] = {
             "node": active.node_id,

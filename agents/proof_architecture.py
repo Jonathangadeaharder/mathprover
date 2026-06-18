@@ -14,11 +14,10 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from lean_pipeline import final_verify_attempt
-
 
 DECL_RE = re.compile(r"\b(?:theorem|lemma)\s+([A-Za-z0-9_'.]+)")
 IMPORT_OPEN_RE = re.compile(r"^\s*(?:import|open)\b.*$", re.M)
@@ -83,7 +82,9 @@ def _goal_terms(source: str) -> list[str]:
     return out[:18]
 
 
-def discover_private_helpers(project_root: Path, terms: list[str], limit: int = 20) -> list[dict[str, str]]:
+def discover_private_helpers(
+    project_root: Path, terms: list[str], limit: int = 20
+) -> list[dict[str, str]]:
     helpers: list[dict[str, str]] = []
     for lean_file in sorted(project_root.glob("*.lean")):
         text = lean_file.read_text(encoding="utf-8", errors="ignore")
@@ -120,13 +121,41 @@ def build_architecture(source: str, project_root: Path) -> ProofArchitecture:
             "Test tiny concrete instances or negated forms when a helper may be false.",
         ],
         helper_dag=[
-            HelperNode("generic_principle", "Finite maximum/induction/recurrence principle matching the theorem shape.", []),
-            HelperNode("concrete_operator", "Expose the project transition/kernel/operator in the form the principle expects.", []),
-            HelperNode("kernel_or_state_bridge", f"Bridge target notation to existing project helpers such as {helper_hint}.", ["concrete_operator"]),
-            HelperNode("boundary_values", "Close target and stopping/base cases explicitly.", ["kernel_or_state_bridge"]),
-            HelperNode("harmonicity_or_recursion", "Show the value function satisfies the one-step recurrence off the boundary.", ["boundary_values"]),
-            HelperNode("strict_subsolution_or_drift", "Prove the analytic/combinatorial core inequality separately.", ["kernel_or_state_bridge"]),
-            HelperNode("main_assembly", "Use the generic principle plus helpers to close the pinned theorem.", ["generic_principle", "harmonicity_or_recursion", "strict_subsolution_or_drift"]),
+            HelperNode(
+                "generic_principle",
+                "Finite maximum/induction/recurrence principle matching the theorem shape.",
+                [],
+            ),
+            HelperNode(
+                "concrete_operator",
+                "Expose the project transition/kernel/operator in the form the principle expects.",
+                [],
+            ),
+            HelperNode(
+                "kernel_or_state_bridge",
+                f"Bridge target notation to existing project helpers such as {helper_hint}.",
+                ["concrete_operator"],
+            ),
+            HelperNode(
+                "boundary_values",
+                "Close target and stopping/base cases explicitly.",
+                ["kernel_or_state_bridge"],
+            ),
+            HelperNode(
+                "harmonicity_or_recursion",
+                "Show the value function satisfies the one-step recurrence off the boundary.",
+                ["boundary_values"],
+            ),
+            HelperNode(
+                "strict_subsolution_or_drift",
+                "Prove the analytic/combinatorial core inequality separately.",
+                ["kernel_or_state_bridge"],
+            ),
+            HelperNode(
+                "main_assembly",
+                "Use the generic principle plus helpers to close the pinned theorem.",
+                ["generic_principle", "harmonicity_or_recursion", "strict_subsolution_or_drift"],
+            ),
         ],
         final_gates=[
             "lake env lean <attempt.lean>",
@@ -147,7 +176,9 @@ def render_markdown(architecture: ProofArchitecture, private_helpers: list[dict[
     if private_helpers:
         lines.append("")
         lines.append("## Candidate Private Helpers")
-        lines.extend(f"- `{h['name']}` from `{h['module']}` (`{h['file']}`)" for h in private_helpers)
+        lines.extend(
+            f"- `{h['name']}` from `{h['module']}` (`{h['file']}`)" for h in private_helpers
+        )
     lines.append("")
     lines.append("## Helper DAG")
     for node in architecture.helper_dag:
@@ -155,7 +186,10 @@ def render_markdown(architecture: ProofArchitecture, private_helpers: list[dict[
         lines.append(f"- `{node.name}` ({node.status}; depends on: {deps}) - {node.purpose}")
     lines.append("")
     lines.append("## Final Gates")
-    lines.extend(f"- `{gate}`" if gate.startswith(("lake", "grep", "#print")) else f"- {gate}" for gate in architecture.final_gates)
+    lines.extend(
+        f"- `{gate}`" if gate.startswith(("lake", "grep", "#print")) else f"- {gate}"
+        for gate in architecture.final_gates
+    )
     lines.append("")
     return "\n".join(lines)
 

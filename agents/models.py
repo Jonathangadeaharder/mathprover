@@ -38,12 +38,12 @@ BASE_URL = LOCAL_BASE_URL
 
 # role -> model id (residency keys off these exact names when the model is LM-Studio managed)
 NAMES = {
-    "gemma": "google/gemma-4-26b-a4b-qat",   # context engine / synthesizer (262k)
+    "gemma": "google/gemma-4-26b-a4b-qat",  # context engine / synthesizer (262k)
     "qwen": os.environ.get(
         "MATHPROVER_QWEN_MODEL",
         "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed",
-    ),                                        # orchestrator / researcher (tools, structured output)
-    "oprover": "oprover-8b",                  # prover (plain completion)
+    ),  # orchestrator / researcher (tools, structured output)
+    "oprover": "oprover-8b",  # prover (plain completion)
 }
 
 EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"
@@ -82,12 +82,15 @@ def ensure_mtplx() -> None:
         pass
     mtplx = shutil.which("mtplx")
     if not mtplx:
-        LOG.warning("mtplx CLI not found on PATH; qwen calls will fail until MTPLX is started manually")
+        LOG.warning(
+            "mtplx CLI not found on PATH; qwen calls will fail until MTPLX is started manually"
+        )
         return
     LOG.info("Starting MTPLX daemon via `mtplx quickstart --port 8000` …")
     proc = subprocess.Popen(
         [mtplx, "quickstart", "--port", "8000"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     deadline = time.time() + 120
     while time.time() < deadline:
@@ -100,6 +103,7 @@ def ensure_mtplx() -> None:
         except Exception:
             continue
     LOG.warning("MTPLX daemon not ready after 120s (pid %d); proceeding anyway", proc.pid)
+
 
 _providers: dict[tuple[str, str], OpenAIProvider] = {}
 _clients: dict[tuple[str, str], openai.OpenAI] = {}
@@ -163,8 +167,16 @@ def agent(role: str, **kwargs) -> Agent:
     return Agent(_models[role], **kwargs)
 
 
-def run_sync(ag: Agent, role: str, prompt, *, message_history=None, max_tokens: int | None = None,
-             temperature: float | None = None, **kwargs):
+def run_sync(
+    ag: Agent,
+    role: str,
+    prompt,
+    *,
+    message_history=None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    **kwargs,
+):
     """Run an agent synchronously with turn-based residency enforced first (no-op if role resident)."""
     residency.use(NAMES[role])
     settings = None
@@ -172,7 +184,9 @@ def run_sync(ag: Agent, role: str, prompt, *, message_history=None, max_tokens: 
         settings = ModelSettings(max_tokens=max_tokens or 4096, temperature=temperature or 0.2)
     t0 = time.time()
     try:
-        result = ag.run_sync(prompt, message_history=message_history, model_settings=settings, **kwargs)
+        result = ag.run_sync(
+            prompt, message_history=message_history, model_settings=settings, **kwargs
+        )
     except Exception as exc:
         telemetry.record(
             "model_call",
@@ -201,9 +215,16 @@ def run_sync(ag: Agent, role: str, prompt, *, message_history=None, max_tokens: 
     return result
 
 
-def chat_sync(model: str, messages: list[dict], *, max_tokens: int = 4096,
-              temperature: float = 0.2, base_url: str | None = None,
-              api_key: str | None = None, phase: str = "chat") -> str:
+def chat_sync(
+    model: str,
+    messages: list[dict],
+    *,
+    max_tokens: int = 4096,
+    temperature: float = 0.2,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    phase: str = "chat",
+) -> str:
     """Raw chat via OpenAI-compatible SDK with turn-based residency + retry/400-shrink.
 
     Mirrors the old urllib retry logic: 3 attempts with max_tokens shrink [N, N//2, N//4],
@@ -213,7 +234,11 @@ def chat_sync(model: str, messages: list[dict], *, max_tokens: int = 4096,
     api_key = api_key or api_key_for_model(model)
     client = _client_for(base_url, api_key)
     residency.use(model)
-    attempts = [(max_tokens, 0.0), (max(2048, max_tokens // 2), 3.0), (max(1024, max_tokens // 4), 6.0)]
+    attempts = [
+        (max_tokens, 0.0),
+        (max(2048, max_tokens // 2), 3.0),
+        (max(1024, max_tokens // 4), 6.0),
+    ]
     last_exc: Exception | None = None
     for mt, wait in attempts:
         if wait:
@@ -228,7 +253,9 @@ def chat_sync(model: str, messages: list[dict], *, max_tokens: int = 4096,
                 timeout=900.0,
             )
         except Exception as e:
-            LOG.warning("chat_sync[%s] failed (max_tokens=%d): %s — retrying", model, mt, str(e)[:400])
+            LOG.warning(
+                "chat_sync[%s] failed (max_tokens=%d): %s — retrying", model, mt, str(e)[:400]
+            )
             telemetry.record(
                 "model_call",
                 phase=phase,
@@ -244,10 +271,14 @@ def chat_sync(model: str, messages: list[dict], *, max_tokens: int = 4096,
             continue
         u = resp.usage
         latency = time.time() - t0
-        LOG.debug("chat_sync[%s] %.1fs prompt_tok=%s gen_tok=%s resp_head=%r",
-                  model, latency, u.prompt_tokens if u else "?",
-                  u.completion_tokens if u else "?",
-                  (resp.choices[0].message.content or "")[:160] if resp.choices else "")
+        LOG.debug(
+            "chat_sync[%s] %.1fs prompt_tok=%s gen_tok=%s resp_head=%r",
+            model,
+            latency,
+            u.prompt_tokens if u else "?",
+            u.completion_tokens if u else "?",
+            (resp.choices[0].message.content or "")[:160] if resp.choices else "",
+        )
         telemetry.record(
             "model_call",
             phase=phase,
@@ -267,7 +298,9 @@ def chat_sync(model: str, messages: list[dict], *, max_tokens: int = 4096,
 def embed(texts: list[str]) -> list[list[float]]:
     """Embedding via openai SDK with turn-based residency (replaces pipeline.embed)."""
     residency.use(EMBED_MODEL)
-    resp = _client_for(LOCAL_BASE_URL, "lm-studio").embeddings.create(model=EMBED_MODEL, input=texts, timeout=300.0)
+    resp = _client_for(LOCAL_BASE_URL, "lm-studio").embeddings.create(
+        model=EMBED_MODEL, input=texts, timeout=300.0
+    )
     return [d.embedding for d in resp.data]
 
 
