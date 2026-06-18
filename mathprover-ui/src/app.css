@@ -94,93 +94,6 @@
   --font-paper: "Newsreader", Georgia, serif;
 }
 
-[data-theme="light"] {
-  --bg-0: #fafaf9;
-  --bg-1: #ffffff;
-  --bg-2: #f4f4f3;
-  --bg-3: #eceae6;
-  --bg-hover: #e8e6e2;
-  --bg-active: #ddd9d2;
-
-  --border-soft: #ecebe7;
-  --border: #dcdad5;
-  --border-strong: #c6c3bd;
-
-  --fg-0: #18181b;
-  --fg-1: #2f2f33;
-  --fg-2: #595961;
-  --fg-3: #7a7a82;
-  --fg-4: #a1a1aa;
-
-  --accent: #6d56e8;
-  --accent-soft: #6d56e814;
-  --accent-strong: #5a44d3;
-  --accent-border: #6d56e833;
-
-  --st-proven: #14a05c;
-  --st-proven-bg: #14a05c10;
-  --st-proven-border: #14a05c30;
-
-  --st-disproven: #dc2626;
-  --st-disproven-bg: #dc262610;
-  --st-disproven-border: #dc262630;
-
-  --st-sorries: #b8730e;
-  --st-sorries-bg: #b8730e10;
-  --st-sorries-border: #b8730e30;
-
-  --st-in-progress: #ca8a04;
-  --st-in-progress-bg: #ca8a0410;
-  --st-in-progress-border: #ca8a0430;
-
-  --st-stuck: #dc2649;
-  --st-stuck-bg: #dc264910;
-  --st-stuck-border: #dc264930;
-
-  --st-draft: #2563eb;
-  --st-draft-bg: #2563eb10;
-  --st-draft-border: #2563eb30;
-
-  --st-rejected: #525252;
-  --st-rejected-bg: #52525210;
-  --st-rejected-border: #52525230;
-
-  --st-blocked: #6e6e76;
-  --st-blocked-bg: #6e6e7610;
-  --st-blocked-border: #6e6e7630;
-
-  --st-ready: #0d9488;
-  --st-ready-bg: #0d948810;
-  --st-ready-border: #0d948830;
-
-  --st-unexplored: #8a8a8f;
-  --st-unexplored-bg: #8a8a8f10;
-  --st-unexplored-border: #8a8a8f30;
-
-  --st-progress: var(--st-in-progress);
-  --st-progress-bg: var(--st-in-progress-bg);
-  --st-progress-border: var(--st-in-progress-border);
-  --st-failed: var(--st-stuck);
-  --st-failed-bg: var(--st-stuck-bg);
-  --st-failed-border: var(--st-stuck-border);
-
-  --shadow-sm: 0 1px 2px rgba(20, 20, 20, 0.06);
-  --shadow-md: 0 4px 12px rgba(20, 20, 20, 0.08);
-  --shadow-lg: 0 12px 32px rgba(20, 20, 20, 0.12);
-}
-
-/* density */
-[data-density="compact"] {
-  --row-h: 28px;
-  --pad: 8px;
-  --gap: 6px;
-}
-[data-density="comfortable"] {
-  --row-h: 34px;
-  --pad: 12px;
-  --gap: 10px;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -1857,19 +1770,6 @@ select:focus {
   font-weight: 500;
 }
 
-[data-theme="light"] .kw {
-  color: #7c3aed;
-}
-[data-theme="light"] .tp {
-  color: #0d9488;
-}
-[data-theme="light"] .fn {
-  color: #2563eb;
-}
-[data-theme="light"] .st {
-  color: #b45309;
-}
-
 /* ============================================
    Agent run view
    ============================================ */
@@ -2481,9 +2381,6 @@ select:focus {
   z-index: 1000;
   padding: 40px;
   backdrop-filter: blur(4px);
-}
-[data-theme="light"] .modal-backdrop {
-  background: rgba(20, 20, 20, 0.35);
 }
 .modal {
   background: var(--bg-1);

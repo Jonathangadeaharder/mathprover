@@ -1,15 +1,10 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
-  import { app, project, tweaks, persistTweaks } from '$lib/stores.svelte';
+  import { app, project } from '$lib/stores.svelte';
   import { reindexProject } from '$lib/api';
   import { refreshProject } from '$lib/live.svelte';
 
   let reindexing = $state(false);
-
-  function toggleTheme() {
-    tweaks.theme = tweaks.theme === 'dark' ? 'light' : 'dark';
-    persistTweaks();
-  }
 
   function closeProject() {
     app.openedProject = false;
@@ -64,9 +59,6 @@
         <Icon name="refresh" size={13} />
       </button>
     {/if}
-    <button onclick={toggleTheme} title="toggle theme">
-      <Icon name={tweaks.theme === 'dark' ? 'sun' : 'moon'} size={13} />
-    </button>
     <button title="search"><Icon name="search" size={13} /></button>
     <button title="settings"><Icon name="cog" size={13} /></button>
   </div>

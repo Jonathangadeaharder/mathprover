@@ -230,9 +230,7 @@ export type Route =
   | "definitions";
 
 export interface Tweaks {
-  theme: "dark" | "light";
   graph_layout: "dag" | "radial";
-  density: "compact" | "comfortable";
   accent: string;
   show_proven: boolean;
 }

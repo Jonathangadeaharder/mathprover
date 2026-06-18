@@ -11,8 +11,6 @@
   }
 
   $effect(() => {
-    document.documentElement.dataset.theme = tweaks.theme;
-    document.documentElement.dataset.density = tweaks.density;
     const p = ACCENT_PALETTES[tweaks.accent] ?? ACCENT_PALETTES['#8b7cf6'];
     document.documentElement.style.setProperty('--accent', tweaks.accent);
     document.documentElement.style.setProperty('--accent-strong', p.strong);
@@ -40,22 +38,6 @@
 
     <div class="tw-section">
       <div class="tw-label">Appearance</div>
-
-      <div class="tw-row">
-        <span class="tw-name">Theme</span>
-        <div class="seg">
-          <button class:on={tweaks.theme === 'dark'} onclick={() => set('theme', 'dark')}>dark</button>
-          <button class:on={tweaks.theme === 'light'} onclick={() => set('theme', 'light')}>light</button>
-        </div>
-      </div>
-
-      <div class="tw-row">
-        <span class="tw-name">Density</span>
-        <div class="seg">
-          <button class:on={tweaks.density === 'compact'} onclick={() => set('density', 'compact')}>compact</button>
-          <button class:on={tweaks.density === 'comfortable'} onclick={() => set('density', 'comfortable')}>comfy</button>
-        </div>
-      </div>
 
       <div class="tw-row">
         <span class="tw-name">Accent</span>
@@ -144,15 +126,6 @@
     padding: 6px 0;
   }
   .tw-name { color: var(--fg-1); }
-
-  .seg {
-    display: inline-flex; background: var(--bg-2); border-radius: var(--r-sm); padding: 2px;
-  }
-  .seg button {
-    cursor: pointer; padding: 3px 9px; font-size: 11px;
-    color: var(--fg-3); border-radius: 3px;
-  }
-  .seg button.on { background: var(--bg-1); color: var(--fg-0); }
 
   .swatch-btn {
     cursor: pointer;

@@ -32,9 +32,7 @@ function loadTweaks(): Tweaks {
 
 function defaults(): Tweaks {
   return {
-    theme: "dark",
     graph_layout: "dag",
-    density: "compact",
     accent: "#8b7cf6",
     show_proven: true,
   };
