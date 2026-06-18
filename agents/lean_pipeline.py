@@ -75,10 +75,25 @@ def apply_generated_proof(original: str, model_output: str) -> str | None:
     return None
 
 
+def _resolve_lake() -> str:
+    """Find `lake` even when PATH lacks elan (UI/agent subprocesses often do)."""
+    import shutil
+
+    found = shutil.which("lake")
+    if found:
+        return found
+    cand = Path.home() / ".elan" / "bin" / "lake"
+    return str(cand) if cand.exists() else "lake"
+
+
 def compile_lean_file(
     *, project_root: Path, lean_file: Path, timeout_s: int = 600
 ) -> CompileResult:
-    cmd = ["lake", "env", "lean", str(lean_file.resolve())]
+    env = os.environ.copy()
+    elan_bin = str(Path.home() / ".elan" / "bin")
+    if elan_bin not in env.get("PATH", ""):
+        env["PATH"] = elan_bin + os.pathsep + env.get("PATH", "")
+    cmd = [_resolve_lake(), "env", "lean", str(lean_file.resolve())]
     proc = subprocess.run(
         cmd,
         cwd=project_root,
@@ -86,6 +101,7 @@ def compile_lean_file(
         stderr=subprocess.STDOUT,
         text=True,
         timeout=timeout_s,
+        env=env,
     )
     combined = proc.stdout or ""
     return CompileResult(
@@ -96,8 +112,130 @@ def compile_lean_file(
     )
 
 
+def strip_lean_comments(text: str) -> str:
+    """Remove Lean line comments (`-- …`) and (nestable) block comments (`/- … -/`).
+
+    Placeholder scans must run on *active code only*: a documented `sorry`/`axiom` inside a
+    comment is not a real placeholder. (A clean Aristotle disproof was once false-rejected because
+    its module docstring mentioned `sorry`.)
+    """
+    out: list[str] = []
+    i, n, depth = 0, len(text), 0
+    while i < n:
+        if depth == 0 and text.startswith("--", i):
+            j = text.find("\n", i)
+            if j < 0:
+                break
+            i = j  # keep the newline, drop the comment body
+            continue
+        if text.startswith("/-", i):
+            depth += 1
+            i += 2
+            continue
+        if depth > 0 and text.startswith("-/", i):
+            depth -= 1
+            i += 2
+            continue
+        if depth == 0:
+            out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
 def has_sorry(text: str) -> bool:
-    return bool(re.search(r"\bsorry\b", text))
+    return bool(re.search(r"\bsorry\b", strip_lean_comments(text)))
+
+
+FORBIDDEN_PLACEHOLDER_RE = re.compile(
+    r"(?<![A-Za-z0-9_'.])(sorry|admit|exact\?|sorryAx)(?![A-Za-z0-9_'.])"
+)
+AXIOM_DECL_RE = re.compile(r"^\s*axiom\s+[A-Za-z0-9_'.]+", re.M)
+DECL_NAME_RE = re.compile(r"\b(?:theorem|lemma)\s+([A-Za-z0-9_'.]+)")
+STANDARD_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
+
+
+def forbidden_placeholders(text: str) -> list[str]:
+    """Return proof placeholders that must not survive a successful run, scanning ACTIVE CODE
+    ONLY (comments stripped first).
+
+    Lean treats `sorry` as a warning, and `exact?` can be left as an interactive
+    query in text. A successful proof artifact should contain neither, and it
+    must not smuggle in a new `axiom`.
+    """
+    code = strip_lean_comments(text)
+    seen: list[str] = []
+    for match in FORBIDDEN_PLACEHOLDER_RE.finditer(code):
+        token = match.group(1)
+        if token not in seen:
+            seen.append(token)
+    if AXIOM_DECL_RE.search(code) and "axiom" not in seen:
+        seen.append("axiom")
+    return seen
+
+
+def theorem_names(text: str) -> list[str]:
+    return [m.group(1) for m in DECL_NAME_RE.finditer(text)]
+
+
+def axiom_check(
+    *, project_root: Path, lean_file: Path, theorem: str | None = None, timeout_s: int = 600
+) -> CompileResult:
+    """Compile a copy of `lean_file` with `#print axioms <theorem>` appended."""
+    source = lean_file.read_text(encoding="utf-8")
+    names = theorem_names(source)
+    target = theorem or (names[-1] if names else None)
+    if target is None:
+        return CompileResult(
+            ok=False,
+            stdout="",
+            stderr="",
+            combined="could not infer theorem/lemma name for axiom check",
+        )
+    work = project_root / ".mathprover" / "axiom_check"
+    work.mkdir(parents=True, exist_ok=True)
+    temp = work / f"{lean_file.stem}.{target}.axioms.lean"
+    temp.write_text(source.rstrip() + f"\n\n#print axioms {target}\n", encoding="utf-8")
+    return compile_lean_file(project_root=project_root, lean_file=temp, timeout_s=timeout_s)
+
+
+def unexpected_axioms(output: str) -> list[str]:
+    """Extract custom axioms from Lean's `#print axioms` output conservatively."""
+    found: list[str] = []
+    for line in output.splitlines():
+        if "axiom" not in line.lower():
+            continue
+        bracket = re.search(r"\[([^\]]*)\]", line)
+        if not bracket:
+            continue
+        for raw in bracket.group(1).split(","):
+            axiom = raw.strip()
+            if axiom and axiom not in STANDARD_AXIOMS and axiom not in found:
+                found.append(axiom)
+    return found
+
+
+def final_verify_attempt(
+    *, project_root: Path, lean_file: Path, theorem: str | None = None
+) -> tuple[bool, str]:
+    """Final Aristotle-style proof gate: compile, placeholders, then axiom print."""
+    source = lean_file.read_text(encoding="utf-8")
+    forbidden = forbidden_placeholders(source)
+    if forbidden:
+        return False, "forbidden placeholders remain: " + ", ".join(forbidden)
+    compile_result = compile_lean_file(project_root=project_root, lean_file=lean_file)
+    if not compile_result.ok:
+        return False, "compile failed:\n" + compile_result.error_excerpt()
+    axiom_result = axiom_check(project_root=project_root, lean_file=lean_file, theorem=theorem)
+    if not axiom_result.ok:
+        return False, "axiom check failed:\n" + axiom_result.error_excerpt()
+    custom = [
+        ax
+        for ax in unexpected_axioms(axiom_result.combined)
+        if ax not in STANDARD_AXIOMS and ax not in theorem_names(source)
+    ]
+    if custom:
+        return False, "unexpected/custom axioms may be present:\n" + axiom_result.error_excerpt()
+    return True, axiom_result.combined.strip() or "axiom check completed"
 
 
 def write_if_compiles(
@@ -111,7 +249,7 @@ def write_if_compiles(
     temp = work_dir / f"{target.name}.candidate.lean"
     temp.write_text(candidate, encoding="utf-8")
     result = compile_lean_file(project_root=project_root, lean_file=temp)
-    if result.ok and not has_sorry(candidate):
+    if result.ok and not forbidden_placeholders(candidate):
         target.write_text(candidate, encoding="utf-8")
         return result
     return None

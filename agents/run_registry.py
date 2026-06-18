@@ -13,6 +13,27 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def is_stale_run(run: RunRecord) -> bool:
+    if run.status not in {"pending", "running"}:
+        return False
+    twelve_hours = 12 * 60 * 60
+    if run.heartbeat_at:
+        try:
+            heartbeat = datetime.strptime(run.heartbeat_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc
+            )
+            return (datetime.now(timezone.utc) - heartbeat).total_seconds() > twelve_hours
+        except ValueError:
+            pass
+    try:
+        started = datetime.strptime(run.started_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError:
+        return False
+    return (datetime.now(timezone.utc) - started).total_seconds() > twelve_hours
+
+
 def runs_dir(project_root: Path) -> Path:
     return project_root / ".mathprover" / "runs"
 
@@ -81,7 +102,7 @@ def list_runs(project_root: Path) -> list[RunRecord]:
 
 def active_run(project_root: Path) -> RunRecord | None:
     for run in list_runs(project_root):
-        if run.status in {"pending", "running"}:
+        if run.status in {"pending", "running"} and not is_stale_run(run):
             return run
     return None
 

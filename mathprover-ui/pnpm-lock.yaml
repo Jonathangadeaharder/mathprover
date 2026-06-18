@@ -6,7 +6,14 @@ settings:
 
 importers:
   .:
+    dependencies:
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
     devDependencies:
+      "@playwright/test":
+        specifier: ^1.61.0
+        version: 1.61.0
       "@sveltejs/adapter-auto":
         specifier: ^3.2.0
         version: 3.3.1(@sveltejs/kit@2.61.1(@sveltejs/vite-plugin-svelte@4.0.4(svelte@5.55.9)(vite@5.4.21(@types/node@25.9.1)))(svelte@5.55.9)(typescript@5.9.3)(vite@5.4.21(@types/node@25.9.1)))
@@ -19,6 +26,9 @@ importers:
       "@types/node":
         specifier: ^25.9.1
         version: 25.9.1
+      pino-pretty:
+        specifier: ^13.1.3
+        version: 13.1.3
       svelte:
         specifier: ^5.0.0
         version: 5.55.9
@@ -271,6 +281,20 @@ packages:
         integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==,
       }
 
+  "@pinojs/redact@0.4.0":
+    resolution:
+      {
+        integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==,
+      }
+
+  "@playwright/test@1.61.0":
+    resolution:
+      {
+        integrity: sha512-cKA5B6lpFEMyMGjxF54QihfYpB4FkEGH+qZhtArDEG+wezQAJY8Pq6C7T1SjWz+FFzt3TbyoXBQYk/0292TdJA==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
+
   "@polka/url@1.0.0-next.29":
     resolution:
       {
@@ -332,7 +356,6 @@ packages:
       }
     cpu: [arm]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-arm-musleabihf@4.60.4":
     resolution:
@@ -341,7 +364,6 @@ packages:
       }
     cpu: [arm]
     os: [linux]
-    libc: [musl]
 
   "@rollup/rollup-linux-arm64-gnu@4.60.4":
     resolution:
@@ -350,7 +372,6 @@ packages:
       }
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-arm64-musl@4.60.4":
     resolution:
@@ -359,7 +380,6 @@ packages:
       }
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   "@rollup/rollup-linux-loong64-gnu@4.60.4":
     resolution:
@@ -368,7 +388,6 @@ packages:
       }
     cpu: [loong64]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-loong64-musl@4.60.4":
     resolution:
@@ -377,7 +396,6 @@ packages:
       }
     cpu: [loong64]
     os: [linux]
-    libc: [musl]
 
   "@rollup/rollup-linux-ppc64-gnu@4.60.4":
     resolution:
@@ -386,7 +404,6 @@ packages:
       }
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-ppc64-musl@4.60.4":
     resolution:
@@ -395,7 +412,6 @@ packages:
       }
     cpu: [ppc64]
     os: [linux]
-    libc: [musl]
 
   "@rollup/rollup-linux-riscv64-gnu@4.60.4":
     resolution:
@@ -404,7 +420,6 @@ packages:
       }
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-riscv64-musl@4.60.4":
     resolution:
@@ -413,7 +428,6 @@ packages:
       }
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   "@rollup/rollup-linux-s390x-gnu@4.60.4":
     resolution:
@@ -422,7 +436,6 @@ packages:
       }
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-x64-gnu@4.60.4":
     resolution:
@@ -431,7 +444,6 @@ packages:
       }
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   "@rollup/rollup-linux-x64-musl@4.60.4":
     resolution:
@@ -440,7 +452,6 @@ packages:
       }
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   "@rollup/rollup-openbsd-x64@4.60.4":
     resolution:
@@ -597,6 +608,13 @@ packages:
       }
     engines: { node: ">= 0.4" }
 
+  atomic-sleep@1.0.0:
+    resolution:
+      {
+        integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==,
+      }
+    engines: { node: ">=8.0.0" }
+
   axobject-query@4.1.0:
     resolution:
       {
@@ -618,12 +636,24 @@ packages:
       }
     engines: { node: ">=6" }
 
+  colorette@2.0.20:
+    resolution:
+      {
+        integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==,
+      }
+
   cookie@0.6.0:
     resolution:
       {
         integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==,
       }
     engines: { node: ">= 0.6" }
+
+  dateformat@4.6.3:
+    resolution:
+      {
+        integrity: sha512-2P0p0pFGzHS5EMnhdxQi7aJN+iMheud0UhG4dlE1DLAlvL8JHjJJTX/CSm4JXwV0Ka5nGk3zC5mcb5bUQUxxMA==,
+      }
 
   debug@4.4.3:
     resolution:
@@ -648,6 +678,12 @@ packages:
     resolution:
       {
         integrity: sha512-4CXDYRBGqN+57wVJkuXBYmpAVUSg3L6JAQa/DFqm238G73E1wuyc/JhGQJzN7vUf/CMphYau2zXbfWzDR5aTEw==,
+      }
+
+  end-of-stream@1.4.5:
+    resolution:
+      {
+        integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==,
       }
 
   esbuild@0.21.5:
@@ -675,6 +711,18 @@ packages:
       "@typescript-eslint/types":
         optional: true
 
+  fast-copy@4.0.3:
+    resolution:
+      {
+        integrity: sha512-58apWr0GUiDFM8+3afrO6eYwJBn9ZAhDOzG3L+/9llab/haCARS2UIfffmOurYLwbgDRs8n0rfr6qAAPEAuAQw==,
+      }
+
+  fast-safe-stringify@2.1.1:
+    resolution:
+      {
+        integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==,
+      }
+
   fdir@6.5.0:
     resolution:
       {
@@ -687,6 +735,14 @@ packages:
       picomatch:
         optional: true
 
+  fsevents@2.3.2:
+    resolution:
+      {
+        integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==,
+      }
+    engines: { node: ^8.16.0 || ^10.6.0 || >=11.0.0 }
+    os: [darwin]
+
   fsevents@2.3.3:
     resolution:
       {
@@ -694,6 +750,12 @@ packages:
       }
     engines: { node: ^8.16.0 || ^10.6.0 || >=11.0.0 }
     os: [darwin]
+
+  help-me@5.0.0:
+    resolution:
+      {
+        integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==,
+      }
 
   import-meta-resolve@4.2.0:
     resolution:
@@ -706,6 +768,13 @@ packages:
       {
         integrity: sha512-ixkJoqQvAP88E6wLydLGGqCJsrFUnqoH6HnaczB8XmDH1oaWU+xxdptvikTgaEhtZ53Ky6YXiBuUI2WXLMCwjw==,
       }
+
+  joycon@3.1.1:
+    resolution:
+      {
+        integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==,
+      }
+    engines: { node: ">=10" }
 
   kleur@4.1.5:
     resolution:
@@ -724,6 +793,12 @@ packages:
     resolution:
       {
         integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==,
+      }
+
+  minimist@1.2.8:
+    resolution:
+      {
+        integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==,
       }
 
   mri@1.2.0:
@@ -754,11 +829,66 @@ packages:
     engines: { node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1 }
     hasBin: true
 
+  on-exit-leak-free@2.1.2:
+    resolution:
+      {
+        integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==,
+      }
+    engines: { node: ">=14.0.0" }
+
+  once@1.4.0:
+    resolution:
+      {
+        integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==,
+      }
+
   picocolors@1.1.1:
     resolution:
       {
         integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==,
       }
+
+  pino-abstract-transport@3.0.0:
+    resolution:
+      {
+        integrity: sha512-wlfUczU+n7Hy/Ha5j9a/gZNy7We5+cXp8YL+X+PG8S0KXxw7n/JXA3c46Y0zQznIJ83URJiwy7Lh56WLokNuxg==,
+      }
+
+  pino-pretty@13.1.3:
+    resolution:
+      {
+        integrity: sha512-ttXRkkOz6WWC95KeY9+xxWL6AtImwbyMHrL1mSwqwW9u+vLp/WIElvHvCSDg0xO/Dzrggz1zv3rN5ovTRVowKg==,
+      }
+    hasBin: true
+
+  pino-std-serializers@7.1.0:
+    resolution:
+      {
+        integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==,
+      }
+
+  pino@10.3.1:
+    resolution:
+      {
+        integrity: sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==,
+      }
+    hasBin: true
+
+  playwright-core@1.61.0:
+    resolution:
+      {
+        integrity: sha512-caX7TrY3Ml6egyDX0WUcTHDxodl/b51y5wJOdCEA36QviK/s2g081hvmGs8eaE3DWb6NYZQ6BjO/QkNRPenoPA==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
+
+  playwright@1.61.0:
+    resolution:
+      {
+        integrity: sha512-Z+7BeeqQPRRzklHsVFP4KTGIyMxKUmfeRA4WisM6G3/XW6nwGeX6fX9qYaDa+CiUqpOkb2f6X3nar05R3kSuJQ==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
 
   postcss@8.5.15:
     resolution:
@@ -767,12 +897,43 @@ packages:
       }
     engines: { node: ^10 || ^12 || >=14 }
 
+  process-warning@5.0.0:
+    resolution:
+      {
+        integrity: sha512-a39t9ApHNx2L4+HBnQKqxxHNs1r7KF+Intd8Q/g1bUh6q0WIp9voPXJ/x0j+ZL45KF1pJd9+q2jLIRMfvEshkA==,
+      }
+
+  pump@3.0.4:
+    resolution:
+      {
+        integrity: sha512-VS7sjc6KR7e1ukRFhQSY5LM2uBWAUPiOPa/A3mkKmiMwSmRFUITt0xuj+/lesgnCv+dPIEYlkzrcyXgquIHMcA==,
+      }
+
+  quick-format-unescaped@4.0.4:
+    resolution:
+      {
+        integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==,
+      }
+
   readdirp@4.1.2:
     resolution:
       {
         integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==,
       }
     engines: { node: ">= 14.18.0" }
+
+  real-require@0.2.0:
+    resolution:
+      {
+        integrity: sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==,
+      }
+    engines: { node: ">= 12.13.0" }
+
+  real-require@1.0.0:
+    resolution:
+      {
+        integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==,
+      }
 
   rollup@4.60.4:
     resolution:
@@ -789,6 +950,19 @@ packages:
       }
     engines: { node: ">=6" }
 
+  safe-stable-stringify@2.5.0:
+    resolution:
+      {
+        integrity: sha512-b3rppTKm9T+PsVCBEOUR46GWI7fdOs00VKZ1+9c1EWDaDMvjQc6tUwuFyIprgGgTcWoVHSKrU8H31ZHA2e0RHA==,
+      }
+    engines: { node: ">=10" }
+
+  secure-json-parse@4.1.0:
+    resolution:
+      {
+        integrity: sha512-l4KnYfEyqYJxDwlNVyRfO2E4NTHfMKAWdUuA8J0yve2Dz/E/PdBepY03RvyJpssIpRFwJoCD55wA+mEDs6ByWA==,
+      }
+
   set-cookie-parser@3.1.0:
     resolution:
       {
@@ -802,12 +976,32 @@ packages:
       }
     engines: { node: ">=18" }
 
+  sonic-boom@4.2.1:
+    resolution:
+      {
+        integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==,
+      }
+
   source-map-js@1.2.1:
     resolution:
       {
         integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==,
       }
     engines: { node: ">=0.10.0" }
+
+  split2@4.2.0:
+    resolution:
+      {
+        integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==,
+      }
+    engines: { node: ">= 10.x" }
+
+  strip-json-comments@5.0.3:
+    resolution:
+      {
+        integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==,
+      }
+    engines: { node: ">=14.16" }
 
   svelte-check@4.4.8:
     resolution:
@@ -826,6 +1020,13 @@ packages:
         integrity: sha512-fTjjT8cHLDwigcu2j3pv7Jq04LklXevPB8uBgyHNiTXv+RMNvVnrjS4UEYrLMkhuq1vpCodHjiW+z/95SDs/fg==,
       }
     engines: { node: ">=18" }
+
+  thread-stream@4.2.0:
+    resolution:
+      {
+        integrity: sha512-e2zZ96wSChazBsbENf/Pcm/4swHt2cEKQ92rhUjkL9GCKiTDJIaTBenjE/m9DXi0QBmTMDkFDdOomUy20A1tDQ==,
+      }
+    engines: { node: ">=20" }
 
   totalist@3.0.1:
     resolution:
@@ -892,6 +1093,12 @@ packages:
     peerDependenciesMeta:
       vite:
         optional: true
+
+  wrappy@1.0.2:
+    resolution:
+      {
+        integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==,
+      }
 
   zimmerframe@1.1.4:
     resolution:
@@ -987,6 +1194,12 @@ snapshots:
     dependencies:
       "@jridgewell/resolve-uri": 3.1.2
       "@jridgewell/sourcemap-codec": 1.5.5
+
+  "@pinojs/redact@0.4.0": {}
+
+  "@playwright/test@1.61.0":
+    dependencies:
+      playwright: 1.61.0
 
   "@polka/url@1.0.0-next.29": {}
 
@@ -1134,6 +1347,8 @@ snapshots:
 
   aria-query@5.3.1: {}
 
+  atomic-sleep@1.0.0: {}
+
   axobject-query@4.1.0: {}
 
   chokidar@4.0.3:
@@ -1142,7 +1357,11 @@ snapshots:
 
   clsx@2.1.1: {}
 
+  colorette@2.0.20: {}
+
   cookie@0.6.0: {}
+
+  dateformat@4.6.3: {}
 
   debug@4.4.3:
     dependencies:
@@ -1151,6 +1370,10 @@ snapshots:
   deepmerge@4.3.1: {}
 
   devalue@5.8.1: {}
+
+  end-of-stream@1.4.5:
+    dependencies:
+      once: 1.4.0
 
   esbuild@0.21.5:
     optionalDependencies:
@@ -1184,16 +1407,27 @@ snapshots:
     dependencies:
       "@jridgewell/sourcemap-codec": 1.5.5
 
+  fast-copy@4.0.3: {}
+
+  fast-safe-stringify@2.1.1: {}
+
   fdir@6.5.0: {}
+
+  fsevents@2.3.2:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
+
+  help-me@5.0.0: {}
 
   import-meta-resolve@4.2.0: {}
 
   is-reference@3.0.3:
     dependencies:
       "@types/estree": 1.0.9
+
+  joycon@3.1.1: {}
 
   kleur@4.1.5: {}
 
@@ -1203,6 +1437,8 @@ snapshots:
     dependencies:
       "@jridgewell/sourcemap-codec": 1.5.5
 
+  minimist@1.2.8: {}
+
   mri@1.2.0: {}
 
   mrmime@2.0.1: {}
@@ -1211,7 +1447,57 @@ snapshots:
 
   nanoid@3.3.12: {}
 
+  on-exit-leak-free@2.1.2: {}
+
+  once@1.4.0:
+    dependencies:
+      wrappy: 1.0.2
+
   picocolors@1.1.1: {}
+
+  pino-abstract-transport@3.0.0:
+    dependencies:
+      split2: 4.2.0
+
+  pino-pretty@13.1.3:
+    dependencies:
+      colorette: 2.0.20
+      dateformat: 4.6.3
+      fast-copy: 4.0.3
+      fast-safe-stringify: 2.1.1
+      help-me: 5.0.0
+      joycon: 3.1.1
+      minimist: 1.2.8
+      on-exit-leak-free: 2.1.2
+      pino-abstract-transport: 3.0.0
+      pump: 3.0.4
+      secure-json-parse: 4.1.0
+      sonic-boom: 4.2.1
+      strip-json-comments: 5.0.3
+
+  pino-std-serializers@7.1.0: {}
+
+  pino@10.3.1:
+    dependencies:
+      "@pinojs/redact": 0.4.0
+      atomic-sleep: 1.0.0
+      on-exit-leak-free: 2.1.2
+      pino-abstract-transport: 3.0.0
+      pino-std-serializers: 7.1.0
+      process-warning: 5.0.0
+      quick-format-unescaped: 4.0.4
+      real-require: 0.2.0
+      safe-stable-stringify: 2.5.0
+      sonic-boom: 4.2.1
+      thread-stream: 4.2.0
+
+  playwright-core@1.61.0: {}
+
+  playwright@1.61.0:
+    dependencies:
+      playwright-core: 1.61.0
+    optionalDependencies:
+      fsevents: 2.3.2
 
   postcss@8.5.15:
     dependencies:
@@ -1219,7 +1505,20 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  process-warning@5.0.0: {}
+
+  pump@3.0.4:
+    dependencies:
+      end-of-stream: 1.4.5
+      once: 1.4.0
+
+  quick-format-unescaped@4.0.4: {}
+
   readdirp@4.1.2: {}
+
+  real-require@0.2.0: {}
+
+  real-require@1.0.0: {}
 
   rollup@4.60.4:
     dependencies:
@@ -1256,6 +1555,10 @@ snapshots:
     dependencies:
       mri: 1.2.0
 
+  safe-stable-stringify@2.5.0: {}
+
+  secure-json-parse@4.1.0: {}
+
   set-cookie-parser@3.1.0: {}
 
   sirv@3.0.2:
@@ -1264,7 +1567,15 @@ snapshots:
       mrmime: 2.0.1
       totalist: 3.0.1
 
+  sonic-boom@4.2.1:
+    dependencies:
+      atomic-sleep: 1.0.0
+
   source-map-js@1.2.1: {}
+
+  split2@4.2.0: {}
+
+  strip-json-comments@5.0.3: {}
 
   svelte-check@4.4.8(svelte@5.55.9)(typescript@5.9.3):
     dependencies:
@@ -1299,6 +1610,10 @@ snapshots:
     transitivePeerDependencies:
       - "@typescript-eslint/types"
 
+  thread-stream@4.2.0:
+    dependencies:
+      real-require: 1.0.0
+
   totalist@3.0.1: {}
 
   typescript@5.9.3: {}
@@ -1317,5 +1632,7 @@ snapshots:
   vitefu@1.1.3(vite@5.4.21(@types/node@25.9.1)):
     optionalDependencies:
       vite: 5.4.21(@types/node@25.9.1)
+
+  wrappy@1.0.2: {}
 
   zimmerframe@1.1.4: {}

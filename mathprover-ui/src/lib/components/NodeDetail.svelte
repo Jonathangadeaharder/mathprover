@@ -8,13 +8,46 @@
   import { NODE_BY_ID, CHILDREN_BY_ID, DEF_BY_ID } from '$lib/data';
   import { highlightLean, statusKey } from '$lib/lean';
 
+  type Tab = 'overview' | 'paper' | 'lean' | 'mapping' | 'attempts' | 'sorries';
+
   let node = $derived(app.selectedNodeId ? NODE_BY_ID[app.selectedNodeId] : null);
-  let tab = $state<'overview' | 'mapping' | 'lean' | 'attempts' | 'sorries'>('overview');
+  let tab = $state<Tab>('overview');
   let mappingVariant = $state<'comment' | 'macro' | 'sidecar'>('comment');
+
+  let paperSource = $state<string | null>(null);
+  let leanSource = $state<string | null>(null);
+  let statusMd = $state<string | null>(null);
+  let sourceLoading = $state(false);
+
+  async function loadNodeSource() {
+    if (!node || !app.projectRoot) { paperSource = null; leanSource = null; statusMd = null; return; }
+    sourceLoading = true;
+    try {
+      const folder = node.proof_folder || node.id;
+      const params = new URLSearchParams({ project: app.projectRoot, node: node.id, folder });
+      const res = await fetch(`/api/node-source?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        paperSource = data.paper;
+        leanSource = data.lean;
+        statusMd = data.status;
+      } else {
+        paperSource = null;
+        leanSource = null;
+        statusMd = null;
+      }
+    } catch {
+      paperSource = null;
+      leanSource = null;
+      statusMd = null;
+    }
+    sourceLoading = false;
+  }
 
   $effect(() => {
     void app.selectedNodeId;
     tab = 'overview';
+    loadNodeSource();
   });
 
   let sk = $derived(node ? statusKey(node.status) : 'UNEXPLORED');
@@ -46,18 +79,21 @@
     <div class="detail-header">
       <div class="row">
         <StatusPill status={node.status} />
-        <span class="pid">{node.paper_section} · {node.paper_id}</span>
+        <span class="pid">{node.paper_id}{node.paper_section ? ` · ${node.paper_section}` : ''}</span>
         {#if node.isCapstone}
-          <span class="gn-flag capstone" style="font-size: 9.5px; padding: 1px 5px; border-radius: 3px;">CAPSTONE</span>
+          <span class="gn-flag capstone-flag">CAPSTONE</span>
         {/if}
         <button class="close" onclick={close} aria-label="close"><Icon name="close" size={14} /></button>
       </div>
       <h2>{node.paper_name}</h2>
-      <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
-        {#if sk !== 'PROVEN' && sk !== 'PROGRESS'}
+      <div class="detail-lean-theorem mono-sm" style="margin-top: 2px;">
+        {node.lean_theorem}
+      </div>
+      <div class="flex-gap-sm" style="margin-top: 12px; flex-wrap: wrap;">
+        {#if sk !== 'PROVEN' && sk !== 'IN_PROGRESS' && sk !== 'DISPROVEN' && sk !== 'REJECTED'}
           <RunAgentButton disabled={!allDepsProven && sk === 'BLOCKED'} status={sk} onrun={runAgent} />
         {/if}
-        {#if sk === 'PROGRESS'}
+        {#if sk === 'IN_PROGRESS'}
           <button class="btn" onclick={() => (app.route = 'agents')}>
             <Icon name="activity" size={12} />View live run
           </button>
@@ -71,15 +107,16 @@
     <div class="detail-tabs">
       {#each [
         { id: 'overview', label: 'Overview', count: undefined },
+        { id: 'paper',    label: 'Paper source', count: undefined },
+        { id: 'lean',     label: 'Lean code', count: undefined },
         { id: 'mapping',  label: 'Mapping',  count: undefined },
-        { id: 'lean',     label: 'Lean source', count: undefined },
         { id: 'attempts', label: 'Attempts', count: (node.attemptsLog || []).length },
         { id: 'sorries',  label: 'Subgoals', count: (node.sorries || []).length },
       ] as t (t.id)}
         <button
           class="detail-tab"
           class:active={tab === t.id}
-          onclick={() => (tab = t.id as typeof tab)}
+          onclick={() => (tab = t.id as Tab)}
         >
           {t.label}
           {#if t.count !== undefined && t.count > 0}
@@ -97,7 +134,7 @@
             {#if node.paper_stmt}
               {node.paper_stmt}
             {:else}
-              <span style="color: var(--fg-3); font-style: italic;">No paper statement linked yet — add a <span class="kbd" style="font-family: inherit;">% @lean:</span> decorator above the theorem in main.tex.</span>
+              <span class="italic-fg3">No paper statement linked yet — add a <span class="kbd kbd-mono">% @lean:</span> decorator above the theorem in main.tex.</span>
             {/if}
           </div>
         </section>
@@ -110,16 +147,16 @@
             <dt>Lean file</dt><dd>{node.lean_file}{node.lean_line ? `:${node.lean_line}` : ''}</dd>
             <dt>Importance</dt><dd>
               <Meter value={node.importance} color="var(--accent)" />
-              <span style="margin-left: 8px;">{(node.importance * 100).toFixed(0)}%</span>
+              <span class="pct-label">{(node.importance * 100).toFixed(0)}%</span>
             </dd>
-            <dt>Difficulty</dt><dd style="text-transform: capitalize;">{node.difficulty}</dd>
+            <dt>Difficulty</dt><dd class="capitalize">{node.difficulty}</dd>
             {#if node.confidence !== null && node.confidence !== undefined}
               <dt>Confidence</dt><dd>
                 <Meter
                   value={node.confidence}
-                  color={node.confidence > 0.7 ? 'var(--st-proven)' : node.confidence > 0.4 ? 'var(--st-sorries)' : 'var(--st-failed)'}
+                  color={node.confidence > 0.7 ? 'var(--st-proven)' : node.confidence > 0.4 ? 'var(--st-sorries)' : 'var(--st-stuck)'}
                 />
-                <span style="margin-left: 8px;">{(node.confidence * 100).toFixed(0)}%</span>
+                <span class="pct-label">{(node.confidence * 100).toFixed(0)}%</span>
               </dd>
             {/if}
             <dt>Tokens spent</dt><dd>{node.tokens_spent.toLocaleString()}</dd>
@@ -134,9 +171,9 @@
               {#each defsUsed as def (def.id)}
                 <button class="dep-row" type="button" onclick={() => openDef(def.id)}>
                   <Icon name="cog" size={12} />
-                  <span style="font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--bg-3); color: var(--fg-3); text-transform: lowercase;">{def.kind}</span>
-                  <code style="font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-1);">{def.lean_name}</code>
-                  <span class="name" style="font-size: 11px; color: var(--fg-3);">{def.name}</span>
+                  <span class="kind-pill">{def.kind}</span>
+                  <code class="mono-code">{def.lean_name}</code>
+                  <span class="name name-sm-fg3">{def.name}</span>
                 </button>
               {/each}
             </div>
@@ -175,25 +212,101 @@
           </section>
         {/if}
 
+        {#if sk !== 'PROVEN' && sk !== 'DISPROVEN' && sk !== 'REJECTED'}
+          <section class="detail-section">
+            <h3>Decompose into sub-lemmas</h3>
+            <p class="split-desc">
+              Split this node into smaller, independently provable sub-lemmas. Each sub-lemma becomes a child node in the graph.
+            </p>
+            <button class="btn sm" disabled title="Split decomposition requires agent integration">
+              <Icon name="split" size={11} />Split into sub-lemmas
+            </button>
+          </section>
+        {/if}
+
         {#if node.note}
           <section class="detail-section">
             <h3>Notes</h3>
-            <div style="font-size: 12px; color: var(--fg-2); line-height: 1.6;">{node.note}</div>
+            <div class="detail-note">{node.note}</div>
           </section>
+        {/if}
+
+      {:else if tab === 'paper'}
+        <section class="detail-section">
+          <h3>paper_source.md</h3>
+          <div class="file-path-row">
+            <Icon name="page" size={12} />
+            <span>proofs/{node.proof_folder || node.id}/paper_source.md</span>
+          </div>
+          {#if sourceLoading}
+            <div class="empty-state">Loading...</div>
+          {:else if paperSource}
+            <pre class="code-block paper-source">{paperSource}</pre>
+          {:else}
+            <div class="empty-state">
+              No paper_source.md found for this node.
+            </div>
+          {/if}
+        </section>
+
+        {#if statusMd}
+          <section class="detail-section">
+            <h3>status.md</h3>
+            <pre class="code-block status-source">{statusMd}</pre>
+          </section>
+        {/if}
+
+      {:else if tab === 'lean'}
+        <section class="detail-section">
+          <h3>attempt.lean</h3>
+          <div class="file-path-row">
+            <Icon name="page" size={12} />
+            <span>proofs/{node.proof_folder || node.id}/attempt.lean</span>
+          </div>
+          {#if sourceLoading}
+            <div class="empty-state">Loading...</div>
+          {:else if leanSource}
+            <pre class="code-block">{@html highlightLean(leanSource)}</pre>
+          {:else if node.lean_stmt}
+            <pre class="code-block">{@html highlightLean(node.lean_stmt)}</pre>
+          {:else}
+            <div class="empty-state">
+              No Lean source found for this node.
+            </div>
+          {/if}
+        </section>
+
+        {#if leanSource || node.lean_stmt}
+          <div class="detail-section detail-section-mt">
+            <h3>Axiom usage</h3>
+            <div class="axiom-grid">
+              <span class="axiom-ok">✓</span>
+              <span class="axiom-text">propext, Classical.choice, Quot.sound</span>
+              {#if leanSource && leanSource.includes('sorry')}
+                <span class="axiom-warn">!</span>
+                <span class="axiom-text">Contains open sorry placeholders</span>
+              {:else if node.sorries && node.sorries.length > 0}
+                <span class="axiom-warn">!</span>
+                <span class="axiom-text">{node.sorries.length} open sorry placeholders</span>
+              {:else}
+                <span class="axiom-ok">✓</span>
+                <span class="axiom-text">No sorry placeholders</span>
+              {/if}
+            </div>
+          </div>
         {/if}
 
       {:else if tab === 'mapping'}
         <section class="detail-section">
           <h3>Mapping declaration style</h3>
-          <div style="display: flex; gap: 4px; margin-bottom: 12px; background: var(--bg-2); padding: 3px; border-radius: var(--r);">
+          <div class="map-seg-bar">
             {#each [
               { id: 'comment', label: 'LaTeX % comment + Lean docstring' },
               { id: 'macro',   label: '\\leanref{} + @[paper] attr' },
               { id: 'sidecar', label: 'Sidecar mapping.yaml' },
             ] as v (v.id)}
               <button
-                class="btn sm"
-                style="flex: 1;"
+                class="btn sm map-seg-btn"
                 style:background={mappingVariant === v.id ? 'var(--bg-1)' : 'transparent'}
                 style:border-color={mappingVariant === v.id ? 'var(--border)' : 'transparent'}
                 onclick={() => (mappingVariant = v.id as typeof mappingVariant)}
@@ -234,7 +347,7 @@ theorem {node.lean_theorem} ...{/if}</pre>
 
         <section class="detail-section">
           <h3>Why this matters</h3>
-          <div style="font-size: 12px; color: var(--fg-2); line-height: 1.55;">
+          <div class="meta-text">
             The bidirectional mapping makes every paper claim a first-class object in the graph. When the LaTeX
             changes, MathProver re-runs the parser, flags stale Lean nodes, and surfaces them in the Frontier
             view marked <em>stale</em>. Without the decorator, the agent can still attack the Lean theorem but
@@ -242,39 +355,16 @@ theorem {node.lean_theorem} ...{/if}</pre>
           </div>
         </section>
 
-      {:else if tab === 'lean'}
-        {#if node.lean_stmt}
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);">
-            <Icon name="page" size={12} />
-            <span>{node.lean_file}{node.lean_line ? `:${node.lean_line}` : ''}</span>
-            <button class="btn ghost sm" style="margin-left: auto;">Open in VS Code</button>
-          </div>
-          <pre class="code-block">{@html highlightLean(node.lean_stmt)}</pre>
-          <div class="detail-section" style="margin-top: 18px;">
-            <h3>Axiom usage</h3>
-            <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12px; font-family: var(--font-mono);">
-              <span style="color: var(--st-proven);">✓</span>
-              <span style="color: var(--fg-1);">propext, Classical.choice, Quot.sound</span>
-              <span style="color: var(--st-sorries);">!</span>
-              <span style="color: var(--fg-1);">{(node.sorries && node.sorries.length) || 0} open sorry placeholders</span>
-            </div>
-          </div>
-        {:else}
-          <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">
-            No Lean source linked.<br />Run the agent to scaffold a theorem stub.
-          </div>
-        {/if}
-
       {:else if tab === 'attempts'}
         {#if !node.attemptsLog || node.attemptsLog.length === 0}
-          <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">No attempts logged yet.</div>
+          <div class="empty-state">No attempts logged yet.</div>
         {:else}
           <div class="detail-section">
             <h3>Git-backed branch graph</h3>
-            <p style="font-size: 11.5px; color: var(--fg-3); margin: 0 0 4px; line-height: 1.55;">
-              Each attempt is a real branch under <span class="kbd" style="font-family: var(--font-mono);">.mathprover/attempts/</span>.
-              Failed approaches are dead ends; partial progress merges back to <span class="kbd" style="font-family: var(--font-mono);">main</span>.
-              Click any branch to <span style="color: var(--accent);">git checkout</span> its Lean workspace state.
+            <p class="split-desc" style="font-size: 11.5px; margin: 0 0 4px;">
+              Each attempt is a real branch under <span class="kbd kbd-mono">.mathprover/attempts/</span>.
+              Failed approaches are dead ends; partial progress merges back to <span class="kbd kbd-mono">main</span>.
+              Click any branch to <span class="accent-text">git checkout</span> its Lean workspace state.
             </p>
             <GitGraph {node} />
           </div>
@@ -284,11 +374,11 @@ theorem {node.lean_theorem} ...{/if}</pre>
             {#each [...node.attemptsLog].reverse() as a (a.id)}
               <div class="attempt">
                 <div class="attempt-head">
-                  <StatusPill status={a.result === 'PARTIAL' ? 'SORRIES' : a.result === 'PROGRESS' ? 'PROGRESS' : a.result} />
+                  <StatusPill status={a.result === 'PARTIAL' ? 'SORRIES' : a.result === 'PROGRESS' ? 'IN_PROGRESS' : a.result === 'FAILED' ? 'STUCK' : a.result} />
                   <span class="agent">{a.agent}</span>
                   <span class="time">{a.duration} · {a.started.slice(11)}</span>
                 </div>
-                <div class="strategy"><strong style="color: var(--fg-0);">Strategy:</strong> {a.strategy}</div>
+                <div class="strategy"><strong class="fg-0">Strategy:</strong> {a.strategy}</div>
                 <div class="cost">
                   <span>{a.tokens.toLocaleString()} tok</span>
                   <span>${a.cost.toFixed(2)}</span>
@@ -302,14 +392,13 @@ theorem {node.lean_theorem} ...{/if}</pre>
 
       {:else if tab === 'sorries'}
         {#if !node.sorries || node.sorries.length === 0}
-          <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">
-            No open subgoals.
+          <div class="empty-state">
             {#if statusKey(node.status) === 'PROVEN'} Theorem is fully derived.{:else} Agent hasn't proposed any decomposition yet.{/if}
           </div>
         {:else}
           <div class="detail-section">
             <h3>Agent-proposed subgoals ({node.sorries.length})</h3>
-            <p style="font-size: 12px; color: var(--fg-2); margin-top: 0; margin-bottom: 12px; line-height: 1.5;">
+            <p class="meta-text" style="margin-top: 0; margin-bottom: 12px;">
               If all subgoals are proven, the parent theorem is closed. Subgoals shared across multiple parents get
               <span class="promoted" style="margin-left: 4px;">promoted</span> to first-class nodes in the graph.
             </p>
@@ -321,7 +410,7 @@ theorem {node.lean_theorem} ...{/if}</pre>
                 </div>
                 <div class="desc">{s.desc}</div>
                 <div class="imp">{s.implies}</div>
-                <div style="display: flex; gap: 6px; margin-top: 8px;">
+                <div class="flex-gap-sm" style="margin-top: 8px;">
                   <button class="btn sm primary"><Icon name="play" size={10} />Dispatch agent</button>
                   <button class="btn sm">Edit subgoal</button>
                 </div>
@@ -334,6 +423,3 @@ theorem {node.lean_theorem} ...{/if}</pre>
   {/if}
 </div>
 
-<style>
-  .dep-row, .detail-tab, .close { all: unset; cursor: pointer; }
-</style>

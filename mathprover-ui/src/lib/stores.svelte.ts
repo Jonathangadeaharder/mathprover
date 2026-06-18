@@ -32,9 +32,7 @@ function loadTweaks(): Tweaks {
 
 function defaults(): Tweaks {
   return {
-    theme: "dark",
     graph_layout: "dag",
-    density: "compact",
     accent: "#8b7cf6",
     show_proven: true,
   };
@@ -88,21 +86,28 @@ export const MODELS = [
   {
     id: "auto",
     name: "auto-router",
-    desc: "Apply mathprover.toml rules (Goedel leaves, Aristotle capstone)",
+    desc: "Apply mathprover.toml rules (oprover leaf → qwen mid → aristotle capstone)",
     lat: "mixed",
     available: true,
   },
   {
-    id: "goedel",
-    name: "goedel-prover-v2-32b (local MLX)",
-    desc: "Frontier leaves — first pass, local 8-bit MLX",
-    lat: "~30m",
+    id: "oprover",
+    name: "oprover-8b (local)",
+    desc: "Frontier leaves — first pass, LM Studio, sound sorry-gate",
+    lat: "~1m",
+    available: true,
+  },
+  {
+    id: "qwen",
+    name: "qwen3.6-27b MTPLX (local)",
+    desc: "Mid-tier escalation via MTPLX after oprover failures",
+    lat: "~1m",
     available: true,
   },
   {
     id: "aristotle",
     name: "aristotle (cloud)",
-    desc: "Capstone L1012 and escalation after local failures",
+    desc: "Capstone + escalation; rate-limited (60/min, 1000/day)",
     lat: "~10m",
     available: true,
   },

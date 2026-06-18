@@ -1,15 +1,10 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
-  import { app, project, tweaks, persistTweaks } from '$lib/stores.svelte';
+  import { app, project } from '$lib/stores.svelte';
   import { reindexProject } from '$lib/api';
   import { refreshProject } from '$lib/live.svelte';
 
   let reindexing = $state(false);
-
-  function toggleTheme() {
-    tweaks.theme = tweaks.theme === 'dark' ? 'light' : 'dark';
-    persistTweaks();
-  }
 
   function closeProject() {
     app.openedProject = false;
@@ -45,13 +40,13 @@
     <button class="project-chip" onclick={closeProject} title="Switch project">
       <Icon name="folder" size={12} />
       <strong>{project.data.project.name}</strong>
-      <span style="color: var(--fg-4)">·</span>
-      <span style="font-family: var(--font-mono); font-size: 11px;">{project.data.project.path}</span>
+      <span class="fg-4">·</span>
+      <span class="mono-sm">{project.data.project.path}</span>
     </button>
-    <span style="font-size: 11px; color: var(--fg-3); font-family: var(--font-mono);">
+    <span class="mono-sm">
       {#if app.goedelLocked}
-        <span style="color: var(--st-progress);">Goedel running</span>
-        <span style="color: var(--fg-4);"> · </span>
+        <span class="live-indicator">Goedel running</span>
+        <span class="fg-4"> · </span>
       {/if}
       last lake build: {project.data.project.lastVerified || '—'}
     </span>
@@ -64,9 +59,6 @@
         <Icon name="refresh" size={13} />
       </button>
     {/if}
-    <button onclick={toggleTheme} title="toggle theme">
-      <Icon name={tweaks.theme === 'dark' ? 'sun' : 'moon'} size={13} />
-    </button>
     <button title="search"><Icon name="search" size={13} /></button>
     <button title="settings"><Icon name="cog" size={13} /></button>
   </div>

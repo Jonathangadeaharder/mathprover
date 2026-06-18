@@ -79,7 +79,7 @@
           class:active={selectedId === d.id}
           onclick={() => (selectedId = d.id)}
         >
-          <span class="kind-pill" style="background: {KIND_COLOR[d.kind] ?? '#888'}1f; color: {KIND_COLOR[d.kind] ?? '#888'}; border-color: {KIND_COLOR[d.kind] ?? '#888'}40;">{d.kind}</span>
+          <span class="kind-pill" style="--kind-color: {KIND_COLOR[d.kind] ?? '#888'}">{d.kind}</span>
           <div class="def-row-main">
             <code class="lean-name">{d.lean_name}</code>
             <div class="def-name">{d.name}</div>
@@ -97,7 +97,7 @@
     {#if selected}
       {@const usedBy = DEF_USED_BY[selected.id] || []}
       <header>
-        <span class="kind-pill big" style="background: {KIND_COLOR[selected.kind] ?? '#888'}1f; color: {KIND_COLOR[selected.kind] ?? '#888'}; border-color: {KIND_COLOR[selected.kind] ?? '#888'}40;">{selected.kind}</span>
+        <span class="kind-pill big" style="--kind-color: {KIND_COLOR[selected.kind] ?? '#888'}">{selected.kind}</span>
         <h2>{selected.name}</h2>
         {#if selected.paper_label}
           <span class="paper-pill">{selected.paper_label}</span>
@@ -130,7 +130,7 @@
               {@const dep = DEF_BY_ID[did]}
               {#if dep}
                 <button class="dep-chip" onclick={() => (selectedId = did)}>
-                  <span class="kind-pill" style="background: {KIND_COLOR[dep.kind] ?? '#888'}1f; color: {KIND_COLOR[dep.kind] ?? '#888'};">{dep.kind}</span>
+                  <span class="kind-pill" style="--kind-color: {KIND_COLOR[dep.kind] ?? '#888'}">{dep.kind}</span>
                   <code>{dep.lean_name}</code>
                 </button>
               {:else}
@@ -219,7 +219,6 @@
   }
   .defs-scroll { flex: 1; overflow-y: auto; padding-bottom: 8px; }
   .def-row {
-    all: unset;
     cursor: pointer;
     display: grid;
     grid-template-columns: auto 1fr auto;
@@ -242,6 +241,9 @@
     font-weight: 500;
     text-transform: lowercase;
     letter-spacing: 0.02em;
+    background: color-mix(in srgb, var(--kind-color, #888) 12%, transparent);
+    color: var(--kind-color, #888);
+    border-color: color-mix(in srgb, var(--kind-color, #888) 25%, transparent);
   }
   .kind-pill.big { font-size: 10.5px; padding: 2px 9px; }
   .usage-count {
@@ -299,7 +301,7 @@
   .meta code { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-1); }
   .dep-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .dep-chip {
-    all: unset; cursor: pointer;
+    cursor: pointer;
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--bg-2);
     border: 1px solid var(--border-1);

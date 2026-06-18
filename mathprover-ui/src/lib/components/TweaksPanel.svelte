@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tweaks, persistTweaks, ACCENT_PALETTES } from '$lib/stores.svelte';
+  import type { Tweaks } from '$lib/types';
   import Icon from './Icon.svelte';
 
   let open = $state(false);
@@ -10,8 +11,6 @@
   }
 
   $effect(() => {
-    document.documentElement.dataset.theme = tweaks.theme;
-    document.documentElement.dataset.density = tweaks.density;
     const p = ACCENT_PALETTES[tweaks.accent] ?? ACCENT_PALETTES['#8b7cf6'];
     document.documentElement.style.setProperty('--accent', tweaks.accent);
     document.documentElement.style.setProperty('--accent-strong', p.strong);
@@ -20,10 +19,9 @@
   });
 
   const accentSwatches = Object.keys(ACCENT_PALETTES);
-  const layouts: { id: 'dag' | 'radial' | 'force'; label: string }[] = [
+  const layouts: { id: 'dag' | 'radial'; label: string }[] = [
     { id: 'dag', label: 'Layered DAG' },
     { id: 'radial', label: 'Radial' },
-    { id: 'force', label: 'Force-organic' },
   ];
 </script>
 
@@ -42,24 +40,8 @@
       <div class="tw-label">Appearance</div>
 
       <div class="tw-row">
-        <span class="tw-name">Theme</span>
-        <div class="seg">
-          <button class:on={tweaks.theme === 'dark'} onclick={() => set('theme', 'dark')}>dark</button>
-          <button class:on={tweaks.theme === 'light'} onclick={() => set('theme', 'light')}>light</button>
-        </div>
-      </div>
-
-      <div class="tw-row">
-        <span class="tw-name">Density</span>
-        <div class="seg">
-          <button class:on={tweaks.density === 'compact'} onclick={() => set('density', 'compact')}>compact</button>
-          <button class:on={tweaks.density === 'comfortable'} onclick={() => set('density', 'comfortable')}>comfy</button>
-        </div>
-      </div>
-
-      <div class="tw-row">
         <span class="tw-name">Accent</span>
-        <div style="display: flex; gap: 6px;">
+        <div class="swatch-row">
           {#each accentSwatches as c (c)}
             <button
               class="swatch-btn"
@@ -78,14 +60,14 @@
 
       <div class="tw-row">
         <span class="tw-name">Layout</span>
-        <select value={tweaks.graph_layout} onchange={(e) => set('graph_layout', (e.currentTarget as HTMLSelectElement).value as any)}>
+        <select value={tweaks.graph_layout} onchange={(e) => set('graph_layout', (e.currentTarget as HTMLSelectElement).value as Tweaks['graph_layout'])}>
           {#each layouts as l (l.id)}<option value={l.id}>{l.label}</option>{/each}
         </select>
       </div>
 
       <div class="tw-row">
         <span class="tw-name">Show proven nodes</span>
-        <button class="toggle" class:on={tweaks.show_proven} onclick={() => set('show_proven', !tweaks.show_proven)} aria-pressed={tweaks.show_proven}>
+        <button class="toggle" class:on={tweaks.show_proven} onclick={() => set('show_proven', !tweaks.show_proven)} aria-pressed={tweaks.show_proven} aria-label="Toggle showing proven nodes">
           <span class="thumb"></span>
         </button>
       </div>
@@ -145,17 +127,8 @@
   }
   .tw-name { color: var(--fg-1); }
 
-  .seg {
-    display: inline-flex; background: var(--bg-2); border-radius: var(--r-sm); padding: 2px;
-  }
-  .seg button {
-    all: unset; cursor: pointer; padding: 3px 9px; font-size: 11px;
-    color: var(--fg-3); border-radius: 3px;
-  }
-  .seg button.on { background: var(--bg-1); color: var(--fg-0); }
-
   .swatch-btn {
-    all: unset; cursor: pointer;
+    cursor: pointer;
     width: 20px; height: 20px; border-radius: 50%;
     border: 2px solid transparent;
     box-shadow: inset 0 0 0 1px var(--border-soft);
@@ -163,7 +136,7 @@
   .swatch-btn.on { border-color: var(--fg-1); }
 
   .toggle {
-    all: unset; cursor: pointer;
+    cursor: pointer;
     width: 30px; height: 16px;
     background: var(--bg-3); border-radius: 8px;
     position: relative; transition: background 0.15s;

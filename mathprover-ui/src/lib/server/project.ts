@@ -1,11 +1,12 @@
-import { existsSync, realpathSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, resolve, sep } from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
-import type { ProjectData } from "$lib/types";
+import type { ProjectData, RunRecord, TheoremNode } from "$lib/types";
 import { EMPTY_PROJECT_DATA } from "$lib/data-empty";
 import { isUnderRoot, mathproverHome } from "./mathprover-home";
+import { log } from "$lib/telemetry";
 
 const PROJECT_MARKERS = ["lakefile.lean", "mathprover.toml"];
 
@@ -66,38 +67,70 @@ function hasProjectMarker(root: string): boolean {
 }
 
 export function resolveProjectRoot(raw?: string | null): string {
-  const requested = (
-    raw?.trim() ||
-    process.env.MATHPROVER_PROJECT_PATH ||
-    process.cwd()
-  ).trim();
-  const normalized = requested.replace(/\\/g, "/");
-  if (
-    !requested ||
-    requested.includes("\0") ||
-    normalized.split("/").includes("..")
-  ) {
-    throw new ProjectRootError("Invalid project path");
+  const explicit = raw?.trim() || process.env.MATHPROVER_PROJECT_PATH;
+  if (explicit) {
+    const normalized = explicit.replace(/\\/g, "/");
+    if (normalized.split("/").includes("..")) {
+      throw new ProjectRootError("Invalid project path: contains ..");
+    }
+    const resolved = isAbsolute(explicit)
+      ? resolve(explicit)
+      : resolve(process.cwd(), expandHome(explicit));
+    const canonical = realpathSafe(resolved);
+    const permitted = allowedRoots();
+    if (!permitted.some((root) => isUnderAllowedRoot(canonical, root))) {
+      throw new ProjectRootError(
+        `Project path is not under allowed roots: ${canonical}`,
+      );
+    }
+    if (!hasProjectMarker(canonical)) {
+      throw new ProjectRootError(
+        `Not a Lean/MathProver project (missing lakefile.lean): ${canonical}`,
+      );
+    }
+    return canonical;
   }
 
-  const resolved = isAbsolute(requested)
-    ? resolve(requested)
-    : resolve(process.cwd(), expandHome(requested));
-  const canonical = realpathSafe(resolved);
-  const permitted = allowedRoots();
+  const detected = autoDetectProject();
+  if (detected) return detected;
 
-  if (!permitted.some((root) => isUnderAllowedRoot(canonical, root))) {
-    throw new ProjectRootError(
-      `Project path is not under allowed roots: ${canonical}`,
-    );
-  }
-  if (!hasProjectMarker(canonical)) {
-    throw new ProjectRootError(
-      `Not a Lean/MathProver project (missing lakefile.lean): ${canonical}`,
-    );
+  throw new ProjectRootError(
+    "No project found. Set ?project=<path> or MATHPROVER_PROJECT_PATH, or place a project under ~/projects.",
+  );
+}
+
+function autoDetectProject(): string | null {
+  const roots = allowedRoots();
+  const candidates: string[] = [];
+
+  for (const root of roots) {
+    try {
+      const entries = readdirSync(root);
+      for (const entry of entries) {
+        const full = resolve(root, entry);
+        try {
+          const st = statSync(full);
+          if (!st.isDirectory()) continue;
+        } catch {
+          continue;
+        }
+        if (hasProjectMarker(full)) candidates.push(full);
+      }
+    } catch {
+      /* root doesn't exist */
+    }
   }
 
-  return canonical;
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => {
+    const ga = existsSync(resolve(a, ".mathprover/graph.json")) ? 1 : 0;
+    const gb = existsSync(resolve(b, ".mathprover/graph.json")) ? 1 : 0;
+    if (ga !== gb) return gb - ga;
+    return a.localeCompare(b);
+  });
+
+  return candidates[0];
 }
 
 export function graphPath(root: string): string {
@@ -118,13 +151,272 @@ export async function enrichGraph(root: string): Promise<ProjectData> {
     root,
     "--graph",
   ]);
-  if (!enriched) return base;
-  return {
+  if (!enriched) return enrichGraphWithLiveRuns(root, base);
+  return enrichGraphWithLiveRuns(root, {
     ...base,
     ...enriched,
     project: { ...base.project, ...enriched.project },
     nodes: enriched.nodes?.length ? enriched.nodes : base.nodes,
     activeAgent: enriched.activeAgent ?? base.activeAgent,
+  });
+}
+
+async function readRunRegistry(root: string): Promise<RunRecord[]> {
+  const runsDir = resolve(root, ".mathprover/runs");
+  try {
+    const files = (await readdir(runsDir)).filter((f) => f.endsWith(".json"));
+    const runs: RunRecord[] = [];
+    for (const file of files) {
+      try {
+        runs.push(
+          JSON.parse(
+            await readFile(resolve(runsDir, file), "utf-8"),
+          ) as RunRecord,
+        );
+      } catch {
+        /* skip corrupt run records */
+      }
+    }
+    return runs.sort((a, b) => b.started_at.localeCompare(a.started_at));
+  } catch {
+    return [];
+  }
+}
+
+function runStatus(run: RunRecord): TheoremNode["status"] {
+  if (isStaleRun(run)) return "BLOCKED";
+  if (run.status === "pending" || run.status === "running")
+    return "IN_PROGRESS";
+  if (run.status === "ok") return "PROVEN";
+  if (run.status === "failed" || run.status === "error") return "STUCK";
+  return "UNEXPLORED";
+}
+
+function runSource(run: RunRecord): string {
+  return `.mathprover/runs/${run.id}.json`;
+}
+
+function isStaleRun(run: RunRecord): boolean {
+  if (run.status !== "pending" && run.status !== "running") return false;
+  const twelveHours = 12 * 60 * 60 * 1000;
+  if (run.heartbeat_at) {
+    const heartbeat = Date.parse(run.heartbeat_at);
+    if (Number.isFinite(heartbeat)) return Date.now() - heartbeat > twelveHours;
+  }
+  const started = Date.parse(run.started_at);
+  if (!Number.isFinite(started)) return false;
+  return Date.now() - started > twelveHours;
+}
+
+function isClosedWorkerState(state: string | undefined): boolean {
+  if (!state) return false;
+  const normalized = state.toLowerCase();
+  return (
+    normalized.includes("done") ||
+    normalized.includes("solved") ||
+    normalized.includes("complete") ||
+    normalized.includes("real_proven")
+  );
+}
+
+function shouldRunOverrideNode(node: TheoremNode, run: RunRecord): boolean {
+  if (run.status === "pending" || run.status === "running")
+    return !isStaleRun(run);
+  if (
+    node.status === "PROVEN" &&
+    (run.status === "failed" || run.status === "error")
+  ) {
+    return false;
+  }
+  if (
+    isClosedWorkerState(node.worker_state) &&
+    (run.status === "failed" || run.status === "error")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function runNodeId(run: RunRecord): string {
+  return run.node_id || run.proof_folder || run.id;
+}
+
+function parentGoalForRunNode(id: string): string | null {
+  if (id.startsWith("CRN_R1_")) return "CRN_constant_ratio_runtime";
+  if (id.startsWith("CRN_R2_")) return "CRN_constant_ratio_runtime";
+  if (id.startsWith("CRN_R3_")) return "CRN_constant_ratio_runtime";
+  if (id.startsWith("CRN_R4_")) return "CRN_constant_ratio_runtime";
+  if (id === "A3a_core") return "CRN_constant_ratio_runtime";
+  if (id === "A3a_constant_ratio_bridge") return "CRN_constant_ratio_runtime";
+  return null;
+}
+
+function goalNote(id: string): string {
+  const parent = parentGoalForRunNode(id);
+  return parent ? `Goal: prerequisite for ${parent}. ` : "";
+}
+
+function humanizeId(id: string): string {
+  return id
+    .replaceAll("_", " ")
+    .replace(/\bcrn\b/gi, "CRN")
+    .replace(/\ba3a\b/gi, "A3a")
+    .replace(/\blbt\b/gi, "LBT")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function activeAgentFromRun(run: RunRecord): ProjectData["activeAgent"] {
+  return {
+    node: runNodeId(run),
+    agent: run.prover,
+    started: run.started_at,
+    step: 0,
+    totalSteps: 4,
+    runId: run.id,
+    phase: run.phase ?? undefined,
+    detail: run.detail ?? undefined,
+    tokensGenerated: run.tokens_generated ?? undefined,
+    tokensPerSec: run.tokens_per_sec ?? undefined,
+    heartbeatAt: run.heartbeat_at ?? undefined,
+    log: [],
+  };
+}
+
+function syntheticNodeFromRun(run: RunRecord): TheoremNode {
+  const id = runNodeId(run);
+  const parent = parentGoalForRunNode(id);
+  const label = friendlyWorkerLabel(id);
+  const folderLabel = humanizeId(run.proof_folder || id);
+  return {
+    id,
+    paper_id: label.short,
+    paper_name: label.desc,
+    lean_theorem: id,
+    lean_file: `proofs/${run.proof_folder || id}/attempt.lean`,
+    lean_line: null,
+    paper_file: `proofs/${run.proof_folder || id}/paper_source.md`,
+    paper_section: parent
+      ? `Supports ${parent}`
+      : `Discovered node: ${folderLabel}`,
+    status: runStatus(run),
+    depends_on: [],
+    uses_defs: [],
+    importance: 0.55,
+    difficulty: "worker",
+    confidence: null,
+    tokens_spent: 0,
+    attempts: 0,
+    note: `${goalNote(id)}${run.prover} ${isStaleRun(run) ? "stale running" : run.status}; source ${runSource(run)}; folder ${run.proof_folder || id}`,
+    proof_folder: run.proof_folder || id,
+    worker_state: isStaleRun(run) ? "stale" : run.status,
+    attemptsLog: [],
+    sorries: [],
+  };
+}
+
+function friendlyWorkerLabel(id: string): { short: string; desc: string } {
+  if (id.startsWith("CRN_R1_"))
+    return { short: "R1", desc: `CRN R1 bridge: kernel founder mass` };
+  if (id.startsWith("CRN_R2_"))
+    return { short: "R2", desc: `CRN R2 bridge: founder mass scaling` };
+  if (id.startsWith("CRN_R3_"))
+    return { short: "R3", desc: `CRN R3 bridge: positive founder survival` };
+  if (id.startsWith("CRN_R4_"))
+    return { short: "R4", desc: `CRN R4 bridge: robust-fill assembly` };
+  if (id === "A3a_core")
+    return { short: "A3a", desc: `A3a core survival bound` };
+  if (id === "A3a_constant_ratio_bridge")
+    return { short: "A3a-bridge", desc: `A3a constant-ratio bridge` };
+  return {
+    short: id.split("_").slice(0, 2).join("_"),
+    desc: `Worker node: ${humanizeId(id)}`,
+  };
+}
+
+async function enrichGraphWithLiveRuns(
+  root: string,
+  graph: ProjectData,
+): Promise<ProjectData> {
+  const runs = await readRunRegistry(root);
+  if (runs.length === 0) return graph;
+
+  const nodes = graph.nodes.map((node) => ({ ...node }));
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const byFolder = new Map(
+    nodes
+      .filter((node) => node.proof_folder)
+      .map((node) => [node.proof_folder as string, node]),
+  );
+
+  const latestByNode = new Map<string, RunRecord>();
+  for (const run of runs) {
+    const id = runNodeId(run);
+    if (!latestByNode.has(id)) latestByNode.set(id, run);
+  }
+
+  for (const run of latestByNode.values()) {
+    const id = runNodeId(run);
+    const parentId = parentGoalForRunNode(id);
+    let node = byId.get(id) || byFolder.get(run.proof_folder);
+    if (
+      !node &&
+      (run.status === "pending" || run.status === "running" || parentId)
+    ) {
+      node = syntheticNodeFromRun(run);
+      nodes.push(node);
+      byId.set(node.id, node);
+      if (node.proof_folder) byFolder.set(node.proof_folder, node);
+    }
+    if (!node) continue;
+
+    if (parentId) {
+      const parent = byId.get(parentId);
+      if (parent && !parent.depends_on.includes(node.id)) {
+        parent.depends_on = [...parent.depends_on, node.id];
+      }
+      node.paper_section ||= `Supports ${parentId}`;
+    } else if (!node.paper_section && node.proof_folder) {
+      node.paper_section = `Proof folder: ${humanizeId(node.proof_folder)}`;
+    }
+
+    node.proof_folder = node.proof_folder || run.proof_folder;
+    if (!shouldRunOverrideNode(node, run)) {
+      node.note = `${node.note || ""}${node.note ? " · " : ""}Ignored stale/failed run ${run.id} from ${runSource(run)} because node is already ${node.status}${node.worker_state ? `/${node.worker_state}` : ""}.`;
+      continue;
+    }
+
+    node.worker_state = isStaleRun(run) ? "stale" : run.status;
+    if (!node.note && node.proof_folder) {
+      node.note = `Source folder: ${node.proof_folder}.`;
+    }
+    if (
+      (run.status === "pending" || run.status === "running") &&
+      !isStaleRun(run)
+    ) {
+      node.status = "IN_PROGRESS";
+      node.note = `${goalNote(id)}${run.prover} ${run.status} since ${run.started_at}; source ${runSource(run)}; folder ${run.proof_folder}`;
+    } else if (isStaleRun(run)) {
+      node.status = "BLOCKED";
+      node.note = `${goalNote(id)}${run.prover} stale running record from ${run.started_at}; source ${runSource(run)}; folder ${run.proof_folder}`;
+    } else if (run.status === "ok") {
+      node.status = "PROVEN";
+      node.note = `${goalNote(id)}${run.prover} verified ok at ${run.started_at}; source ${runSource(run)}; folder ${run.proof_folder}`;
+    } else if (run.status === "failed" || run.status === "error") {
+      node.status = "STUCK";
+      node.note = `${goalNote(id)}${run.prover} ${run.status} at ${run.started_at}; source ${runSource(run)}; folder ${run.proof_folder}${run.message ? `; ${run.message}` : ""}`;
+    }
+  }
+
+  const active = runs.find(
+    (run) =>
+      (run.status === "running" || run.status === "pending") &&
+      !isStaleRun(run),
+  );
+  return {
+    ...graph,
+    nodes,
+    activeAgent: active ? activeAgentFromRun(active) : null,
   };
 }
 
@@ -168,7 +460,7 @@ export function runPythonJson<T>(
     proc,
     (code) => {
       if (code !== 0 || !out.trim()) {
-        if (err) console.error("[python]", err.trim());
+        if (err) log.error({ err: err.trim() }, "python subprocess error");
         return null;
       }
       try {
@@ -178,7 +470,7 @@ export function runPythonJson<T>(
       }
     },
     (message) => {
-      console.error("[python spawn]", message);
+      log.error({ message }, "python spawn failed");
       return null;
     },
   );

@@ -3,6 +3,6 @@
   let { value, color = 'var(--accent)' }: Props = $props();
 </script>
 
-<span style="display:inline-block;width:100px;height:4px;background:var(--bg-3);border-radius:2px;vertical-align:middle;overflow:hidden;">
-  <span style:width="{value * 100}%" style:background={color} style="display:block;height:100%;border-radius:2px;"></span>
+<span class="meter-inline">
+  <span class="meter-inline-fill" style="--meter-pct: {value * 100}%; --meter-color: {color};"></span>
 </span>

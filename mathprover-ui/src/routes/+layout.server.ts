@@ -1,9 +1,7 @@
-import { resolveProjectRoot } from "$lib/server/project";
-import { readFile } from "node:fs/promises";
+import { enrichGraph, resolveProjectRoot } from "$lib/server/project";
 import { resolve } from "node:path";
 import type { LayoutServerLoad } from "./$types";
 import { EMPTY_PROJECT_DATA } from "$lib/data-empty";
-import type { ProjectData } from "$lib/types";
 
 export const load: LayoutServerLoad = async ({ url }) => {
   let root: string;
@@ -20,12 +18,7 @@ export const load: LayoutServerLoad = async ({ url }) => {
   const graphFile = resolve(root, ".mathprover/graph.json");
 
   try {
-    const raw = await readFile(graphFile, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<ProjectData>;
-    const data: ProjectData = {
-      ...EMPTY_PROJECT_DATA,
-      ...parsed,
-    } as ProjectData;
+    const data = await enrichGraph(root);
     return {
       projectData: data,
       projectRoot: root,

@@ -1,0 +1,492 @@
+{
+  "project": {
+    "name": "Test CRN Project",
+    "path": "/test-project",
+    "paper": "Constant-Ratio Runtime for Chemical Reaction Networks",
+    "authors": "Test Author, Second Author",
+    "venue": "arXiv 2024",
+    "capstone": "CRN_constant_ratio_runtime",
+    "lastVerified": "2024-06-01T12:00:00Z"
+  },
+  "recents": [
+    {
+      "name": "Test CRN Project",
+      "path": "/test-project",
+      "thms": 10,
+      "proven": 4,
+      "updated": "2024-06-01"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "CRN_constant_ratio_runtime",
+      "paper_id": "Thm 5.4",
+      "paper_name": "Constant-Ratio Runtime Theorem",
+      "lean_theorem": "CRN_constant_ratio_runtime",
+      "lean_file": "Test/Theorems/Runtime.lean",
+      "lean_line": 42,
+      "paper_file": "paper/sections/runtime.tex",
+      "paper_section": "5.4",
+      "status": "IN_PROGRESS",
+      "depends_on": [
+        "CRN_R1_kernel_founder_mass",
+        "CRN_R2_founder_mass_scaling",
+        "A3a_core"
+      ],
+      "uses_defs": ["def_CRN", "def_runtime"],
+      "importance": 1.0,
+      "difficulty": "hard",
+      "confidence": 0.7,
+      "tokens_spent": 150000,
+      "attempts": 3,
+      "paper_stmt": "Every stochastically CRN admits a constant-ratio runtime bound.",
+      "lean_stmt": "theorem CRN_constant_ratio_runtime : ∃ (c : ℝ), ...",
+      "note": "Capstone theorem. Currently being attempted.",
+      "isCapstone": true,
+      "sorries": [
+        {
+          "name": "sorry_1",
+          "desc": "Founder mass bound",
+          "implies": "CRN_R1_kernel_founder_mass"
+        }
+      ],
+      "attemptsLog": [
+        {
+          "id": "att_001",
+          "agent": "qwen3-72b",
+          "started": "2024-05-30T10:00:00Z",
+          "ended": "2024-05-30T11:30:00Z",
+          "duration": "1h 30m",
+          "tokens": 50000,
+          "cost": 0.15,
+          "strategy": "direct_search",
+          "result": "PROGRESS",
+          "why": "Made progress on founder mass but couldn't close the main bound."
+        }
+      ],
+      "proof_folder": "CRN_constant_ratio_runtime",
+      "worker_state": "in_progress"
+    },
+    {
+      "id": "CRN_R1_kernel_founder_mass",
+      "paper_id": "Lem 3.2",
+      "paper_name": "Kernel Founder Mass Lemma",
+      "lean_theorem": "CRN_R1_kernel_founder_mass",
+      "lean_file": "Test/Theorems/Founder.lean",
+      "lean_line": 15,
+      "paper_file": "paper/sections/founder.tex",
+      "paper_section": "3.2",
+      "status": "PROVEN",
+      "depends_on": ["def_CRN"],
+      "uses_defs": ["def_CRN", "def_founder"],
+      "importance": 0.8,
+      "difficulty": "medium",
+      "confidence": 0.95,
+      "tokens_spent": 80000,
+      "attempts": 2,
+      "paper_stmt": "The founder mass of any kernel CRN is bounded by a constant.",
+      "lean_stmt": "lemma CRN_R1_kernel_founder_mass : ...",
+      "proof_folder": "CRN_R1_kernel_founder_mass",
+      "worker_state": "done",
+      "sufficiencyOverride": {}
+    },
+    {
+      "id": "CRN_R2_founder_mass_scaling",
+      "paper_id": "Lem 3.3",
+      "paper_name": "Founder Mass Scaling Lemma",
+      "lean_theorem": "CRN_R2_founder_mass_scaling",
+      "lean_file": "Test/Theorems/Founder.lean",
+      "lean_line": 30,
+      "paper_file": "paper/sections/founder.tex",
+      "paper_section": "3.3",
+      "status": "PROVEN",
+      "depends_on": ["CRN_R1_kernel_founder_mass"],
+      "uses_defs": ["def_founder"],
+      "importance": 0.75,
+      "difficulty": "medium",
+      "confidence": 0.9,
+      "tokens_spent": 60000,
+      "attempts": 1,
+      "proof_folder": "CRN_R2_founder_mass_scaling",
+      "worker_state": "done"
+    },
+    {
+      "id": "CRN_R3_positive_founder_survival",
+      "paper_id": "Lem 3.4",
+      "paper_name": "Positive Founder Survival",
+      "lean_theorem": "CRN_R3_positive_founder_survival",
+      "lean_file": "Test/Theorems/Survival.lean",
+      "lean_line": 8,
+      "paper_file": "paper/sections/survival.tex",
+      "paper_section": "3.4",
+      "status": "STUCK",
+      "depends_on": ["CRN_R1_kernel_founder_mass"],
+      "uses_defs": ["def_founder"],
+      "importance": 0.7,
+      "difficulty": "hard",
+      "confidence": null,
+      "tokens_spent": 120000,
+      "attempts": 4,
+      "note": "Stuck on the survival probability bound. Counterexample found.",
+      "proof_folder": "CRN_R3_positive_founder_survival",
+      "worker_state": "todo"
+    },
+    {
+      "id": "CRN_R4_robust_fill_assembly",
+      "paper_id": "Lem 3.5",
+      "paper_name": "Robust Fill Assembly",
+      "lean_theorem": "CRN_R4_robust_fill_assembly",
+      "lean_file": "Test/Theorems/Assembly.lean",
+      "lean_line": 22,
+      "paper_file": "paper/sections/assembly.tex",
+      "paper_section": "3.5",
+      "status": "SORRIES",
+      "depends_on": ["CRN_R2_founder_mass_scaling"],
+      "uses_defs": ["def_CRN"],
+      "importance": 0.65,
+      "difficulty": "medium",
+      "confidence": 0.5,
+      "tokens_spent": 40000,
+      "attempts": 2,
+      "sorries": [
+        {
+          "name": "sorry_assembly",
+          "desc": "Assembly completeness",
+          "implies": "CRN_constant_ratio_runtime",
+          "sharedBy": 1
+        }
+      ],
+      "proof_folder": "CRN_R4_robust_fill_assembly",
+      "worker_state": "todo"
+    },
+    {
+      "id": "A3a_core",
+      "paper_id": "Prop 4.1",
+      "paper_name": "Core A3a Survival Bound",
+      "lean_theorem": "A3a_core",
+      "lean_file": "Test/Propositions/A3a.lean",
+      "lean_line": 5,
+      "paper_file": "paper/sections/a3a.tex",
+      "paper_section": "4.1",
+      "status": "READY",
+      "depends_on": ["CRN_R1_kernel_founder_mass"],
+      "uses_defs": ["def_runtime"],
+      "importance": 0.85,
+      "difficulty": "hard",
+      "confidence": null,
+      "tokens_spent": 0,
+      "attempts": 0,
+      "paper_stmt": "The A3a survival bound holds under constant-ratio assumptions.",
+      "lean_stmt": "proposition A3a_core : ...",
+      "proof_folder": "A3a_core"
+    },
+    {
+      "id": "A3a_constant_ratio_bridge",
+      "paper_id": "Prop 4.2",
+      "paper_name": "A3a Constant-Ratio Bridge",
+      "lean_theorem": "A3a_constant_ratio_bridge",
+      "lean_file": "Test/Propositions/A3a.lean",
+      "lean_line": 20,
+      "paper_file": "paper/sections/a3a.tex",
+      "paper_section": "4.2",
+      "status": "UNEXPLORED",
+      "depends_on": ["A3a_core"],
+      "uses_defs": ["def_runtime", "def_CRN"],
+      "importance": 0.6,
+      "difficulty": "hard",
+      "confidence": null,
+      "tokens_spent": 0,
+      "attempts": 0,
+      "proof_folder": "A3a_constant_ratio_bridge"
+    },
+    {
+      "id": "B1_discrete_step_bound",
+      "paper_id": "Lem 2.1",
+      "paper_name": "Discrete Step Bound",
+      "lean_theorem": "B1_discrete_step_bound",
+      "lean_file": "Test/Theorems/Discrete.lean",
+      "lean_line": 10,
+      "paper_file": "paper/sections/discrete.tex",
+      "paper_section": "2.1",
+      "status": "PROVEN",
+      "depends_on": ["def_CRN"],
+      "uses_defs": ["def_CRN", "def_runtime"],
+      "importance": 0.5,
+      "difficulty": "easy",
+      "confidence": 0.98,
+      "tokens_spent": 20000,
+      "attempts": 1,
+      "proof_folder": "B1_discrete_step_bound",
+      "worker_state": "done"
+    },
+    {
+      "id": "C1_concentration_bound",
+      "paper_id": "Lem 5.1",
+      "paper_name": "Concentration Bound",
+      "lean_theorem": "C1_concentration_bound",
+      "lean_file": "Test/Theorems/Concentration.lean",
+      "lean_line": 12,
+      "paper_file": "paper/sections/concentration.tex",
+      "paper_section": "5.1",
+      "status": "DISPROVEN",
+      "depends_on": ["CRN_R3_positive_founder_survival"],
+      "uses_defs": ["def_CRN"],
+      "importance": 0.4,
+      "difficulty": "medium",
+      "confidence": 0.0,
+      "tokens_spent": 30000,
+      "attempts": 1,
+      "note": "Disproven — counterexample shows bound fails for small populations.",
+      "proof_folder": "C1_concentration_bound"
+    },
+    {
+      "id": "D1_draft_lemma",
+      "paper_id": "Lem 6.1",
+      "paper_name": "Draft Lemma (Not Started)",
+      "lean_theorem": "D1_draft_lemma",
+      "lean_file": "Test/Theorems/Draft.lean",
+      "lean_line": 1,
+      "paper_file": "paper/sections/draft.tex",
+      "paper_section": "6.1",
+      "status": "DRAFT",
+      "depends_on": [],
+      "uses_defs": ["def_CRN"],
+      "importance": 0.3,
+      "difficulty": "easy",
+      "confidence": null,
+      "tokens_spent": 0,
+      "attempts": 0,
+      "note": "Draft — not yet formalized.",
+      "proof_folder": "D1_draft_lemma"
+    }
+  ],
+  "definitions": [
+    {
+      "id": "def_CRN",
+      "name": "Chemical Reaction Network",
+      "kind": "structure",
+      "paper_label": "CRN",
+      "paper_section": "2.1",
+      "paper_file": "paper/sections/defs.tex",
+      "lean_name": "Test.CRN",
+      "lean_file": "Test/Defs/CRN.lean",
+      "lean_line": 5,
+      "signature": "structure CRN where ...",
+      "description": "A chemical reaction network is a pair (S, R) where S is a set of species and R is a set of reactions.",
+      "depends_on": [],
+      "used_in": [
+        "CRN_constant_ratio_runtime",
+        "CRN_R1_kernel_founder_mass",
+        "B1_discrete_step_bound"
+      ]
+    },
+    {
+      "id": "def_runtime",
+      "name": "Runtime Function",
+      "kind": "def",
+      "paper_label": "runtime",
+      "paper_section": "2.2",
+      "paper_file": "paper/sections/defs.tex",
+      "lean_name": "Test.runtime",
+      "lean_file": "Test/Defs/Runtime.lean",
+      "lean_line": 10,
+      "signature": "def runtime (crn : CRN) : ℝ → ℝ",
+      "description": "The runtime function maps a population size to expected time to completion.",
+      "depends_on": ["def_CRN"],
+      "used_in": ["CRN_constant_ratio_runtime", "A3a_core"]
+    },
+    {
+      "id": "def_founder",
+      "name": "Founder Species",
+      "kind": "inductive",
+      "paper_label": "founder",
+      "paper_section": "3.1",
+      "paper_file": "paper/sections/founder.tex",
+      "lean_name": "Test.Founder",
+      "lean_file": "Test/Defs/Founder.lean",
+      "lean_line": 3,
+      "signature": "inductive Founder : Type where | mk : ...",
+      "description": "The founder species of a CRN is the species present at time zero.",
+      "depends_on": ["def_CRN"],
+      "used_in": ["CRN_R1_kernel_founder_mass", "CRN_R2_founder_mass_scaling"]
+    }
+  ],
+  "foundations": [
+    {
+      "id": "found_stochastic_dominance",
+      "name": "Stochastic Dominance Lemma",
+      "citation": "Anderson & Kurtz (2011)",
+      "venue": "Theoretical Computer Science",
+      "doi": "10.1016/j.tcs.2011.01.004",
+      "status": "MECHANIZED",
+      "lean_name": "Math.Combinatorics.Stochastic.dominance",
+      "lean_file": "Math/Comb/Stochastic.lean",
+      "lean_line": 42,
+      "used_in": ["CRN_constant_ratio_runtime"],
+      "progress_pct": 100,
+      "description": "Stochastic dominance ordering for reaction networks.",
+      "subgoals": [
+        {
+          "id": "sg_1",
+          "desc": "Prove coupling exists",
+          "status": "done",
+          "lean_name": "Math.Combinatorics.Stochastic.coupling",
+          "effort": "2h"
+        }
+      ]
+    },
+    {
+      "id": "found_markov_chain_bound",
+      "name": "Markov Chain Hitting Time",
+      "citation": "Norris (1998)",
+      "venue": "Cambridge University Press",
+      "status": "PARTIAL",
+      "lean_name": "Test.Foundations.MarkovBound",
+      "lean_file": "Test/Foundations/Markov.lean",
+      "lean_line": 15,
+      "used_in": ["A3a_core"],
+      "progress_pct": 60,
+      "description": "Hitting time bounds for finite-state Markov chains.",
+      "subgoals": [
+        {
+          "id": "sg_2",
+          "desc": "State space finiteness",
+          "status": "done",
+          "effort": "1h"
+        },
+        {
+          "id": "sg_3",
+          "desc": "Tail bound via Azuma",
+          "status": "in_progress",
+          "effort": "4h"
+        }
+      ],
+      "notes": "Need to import Martingale concentration from mathlib."
+    },
+    {
+      "id": "found_axiom_choice_ext",
+      "name": "Axiom of Choice (Extension)",
+      "citation": "ZFC",
+      "status": "AXIOM",
+      "used_in": ["CRN_R4_robust_fill_assembly"],
+      "progress_pct": 0,
+      "description": "Axiom of choice for infinite reaction networks.",
+      "subgoals": []
+    }
+  ],
+  "paperBlocks": [
+    { "kind": "heading", "text": "1. Introduction" },
+    {
+      "kind": "para",
+      "text": "Chemical reaction networks (CRNs) are a formal model for molecular computation."
+    },
+    { "kind": "heading", "text": "2. Preliminaries" },
+    {
+      "kind": "para",
+      "text": "We define the basic notions of CRNs and runtime."
+    },
+    {
+      "kind": "thm",
+      "label": "Lemma 2.1",
+      "nodeId": "B1_discrete_step_bound",
+      "text": "The discrete step count is bounded by O(n log n).",
+      "math": "\\sum_{i=1}^{n} \\log(i) \\leq n \\log(n)"
+    },
+    { "kind": "heading", "text": "3. Founder Species" },
+    {
+      "kind": "thm",
+      "label": "Lemma 3.2",
+      "nodeId": "CRN_R1_kernel_founder_mass",
+      "text": "The founder mass of any kernel CRN is bounded by a constant."
+    },
+    { "kind": "heading", "text": "5. Main Result" },
+    {
+      "kind": "thm",
+      "label": "Theorem 5.4",
+      "nodeId": "CRN_constant_ratio_runtime",
+      "text": "Every stochastically CRN admits a constant-ratio runtime bound.",
+      "after": "Proof sketch..."
+    }
+  ],
+  "leanBlocks": [
+    { "kind": "comment", "text": "-- Test/Theorems/Runtime.lean" },
+    {
+      "kind": "code",
+      "nodeId": "CRN_constant_ratio_runtime",
+      "lines": [
+        "theorem CRN_constant_ratio_runtime :",
+        "    ∃ (c : ℝ), ∀ (crn : CRN), ...",
+        "  sorry"
+      ]
+    },
+    { "kind": "comment", "text": "-- Test/Theorems/Founder.lean" },
+    {
+      "kind": "code",
+      "nodeId": "CRN_R1_kernel_founder_mass",
+      "lines": [
+        "lemma CRN_R1_kernel_founder_mass :",
+        "    founder_mass crn ≤ c :="
+      ]
+    }
+  ],
+  "terms": {
+    "CRN": {
+      "type": "structure",
+      "desc": "Chemical Reaction Network",
+      "src": "Test/Defs/CRN.lean:5"
+    },
+    "founder": {
+      "type": "inductive",
+      "desc": "Founder species",
+      "src": "Test/Defs/Founder.lean:3",
+      "nodeId": "CRN_R1_kernel_founder_mass"
+    },
+    "runtime": {
+      "type": "def",
+      "desc": "Runtime function",
+      "src": "Test/Defs/Runtime.lean:10"
+    }
+  },
+  "failures": [
+    {
+      "id": "fail_001",
+      "target": "CRN_R3_positive_founder_survival",
+      "targetName": "Positive Founder Survival",
+      "approach": "Direct probability bound",
+      "agent": "qwen3-72b",
+      "date": "2024-05-28",
+      "why": "The bound fails when the founder population is small (n < 5).",
+      "counter": "Counterexample: CRN with 2 species, founder=1, reaction rate=0.5. Survival probability drops below bound.",
+      "cost": { "tokens": 120000, "time": "2h 15m", "usd": 0.36 }
+    },
+    {
+      "id": "fail_002",
+      "target": "C1_concentration_bound",
+      "targetName": "Concentration Bound",
+      "approach": "Markov inequality",
+      "agent": "qwen3-72b",
+      "date": "2024-05-30",
+      "why": "Concentration bound fails for small populations. The variance is too high relative to the mean.",
+      "counter": "CRN with population=2, reaction rate=0.9. Concentration exceeds bound by 3x.",
+      "cost": { "tokens": 30000, "time": "45m", "usd": 0.09 }
+    }
+  ],
+  "activeAgent": {
+    "node": "CRN_constant_ratio_runtime",
+    "agent": "qwen3-72b",
+    "started": "2024-06-01T10:00:00Z",
+    "step": 2,
+    "totalSteps": 4,
+    "runId": "run_001",
+    "phase": "searching",
+    "detail": "Exploring tactic: apply CRN_R1_kernel_founder_mass",
+    "tokensGenerated": 15000,
+    "tokensPerSec": 45.2,
+    "heartbeatAt": "2024-06-01T10:05:00Z",
+    "log": [
+      { "t": "10:00:00", "lvl": "info", "msg": "Agent started" },
+      { "t": "10:01:00", "lvl": "info", "msg": "Exploring tactic: simp" },
+      { "t": "10:02:00", "lvl": "warn", "msg": "simp failed, trying apply" }
+    ]
+  }
+}

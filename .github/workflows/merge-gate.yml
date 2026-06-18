@@ -42,7 +42,7 @@ jobs:
 
   required-checks:
     name: Required Checks (Merge)
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
     needs: [pr-gate]
     if: always()
     steps:

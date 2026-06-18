@@ -36,7 +36,7 @@
         hash: (`${a.id}${(Math.abs(hashStr(a.id)) % 1000000).toString(16)}`).slice(0, 7),
         msg: a.strategy,
         when: a.started.slice(11),
-        result: a.result === 'PARTIAL' ? 'SORRIES' : a.result === 'PROGRESS' ? 'PROGRESS' : a.result,
+        result: a.result === 'PARTIAL' ? 'SORRIES' : a.result === 'PROGRESS' ? 'IN_PROGRESS' : a.result === 'FAILED' ? 'STUCK' : a.result,
         duration: a.duration,
         tokens: a.tokens,
         cost: a.cost,
@@ -70,8 +70,8 @@
 
 {#if rows.length > 0}
   <div class="git-graph">
-    <div style="position: absolute; inset: 12px 0 12px 0; width: 140px; pointer-events: none;">
-      <svg width="140" height={total} style="overflow: visible;">
+    <div class="git-axis">
+      <svg class="git-svg" width="140" height={total}>
         <line x1={mainX} y1={ROW_H / 2} x2={mainX} y2={total - ROW_H / 2} stroke="var(--fg-3)" stroke-width="1.5" />
         {#each rows as r, i (r.hash + '-' + i)}
           {#if r.kind === 'branch'}
@@ -79,10 +79,10 @@
             {@const x = rowX(r, i)}
             {@const prevY = (i - 1) * ROW_H + ROW_H / 2}
             {@const nextY = (i + 1) * ROW_H + ROW_H / 2}
-            {@const color = r.result === 'FAILED' ? 'var(--st-failed)' : r.result === 'SORRIES' ? 'var(--st-sorries)' : r.result === 'PROGRESS' ? 'var(--st-progress)' : 'var(--st-proven)'}
+            {@const color = r.result === 'STUCK' ? 'var(--st-stuck)' : r.result === 'SORRIES' ? 'var(--st-sorries)' : r.result === 'IN_PROGRESS' ? 'var(--st-in-progress)' : 'var(--st-proven)'}
             <path d={`M ${mainX} ${prevY} C ${mainX} ${prevY + 12}, ${x} ${cy - 12}, ${x} ${cy}`} stroke={color} fill="none" stroke-width="1.5" />
-            {#if r.result === 'FAILED'}
-              <line x1={x - 6} y1={cy + 8} x2={x + 6} y2={cy + 8} stroke="var(--st-failed)" stroke-width="1.5" />
+            {#if r.result === 'STUCK'}
+              <line x1={x - 6} y1={cy + 8} x2={x + 6} y2={cy + 8} stroke="var(--st-stuck)" stroke-width="1.5" />
             {:else}
               <path d={`M ${x} ${cy} C ${x} ${cy + 12}, ${mainX} ${nextY - 12}, ${mainX} ${nextY}`} stroke={color} fill="none" stroke-width="1.5" />
             {/if}
@@ -100,12 +100,12 @@
         </div>
         <div class="git-info">
           <div class="branch-name">
-            <span style:color={r.kind === 'branch' ? 'var(--accent-strong)' : 'var(--fg-2)'}>{r.branch}</span>
-            <span style="font-size: 10px; color: var(--fg-4);">·</span>
-            <span style="color: var(--fg-3);">{r.hash}</span>
+            <span class="git-branch-name" style:color={r.kind === 'branch' ? 'var(--accent-strong)' : 'var(--fg-2)'}>{r.branch}</span>
+            <span class="git-separator">·</span>
+            <span class="git-hash">{r.hash}</span>
             {#if r.kind === 'branch'}<StatusPill status={r.result} />{/if}
             {#if r.kind === 'merge'}
-              <span style="font-size: 9.5px; padding: 1px 5px; border-radius: 3px; background: var(--accent-soft); color: var(--accent-strong); font-family: var(--font-mono);">HEAD</span>
+              <span class="git-head-badge">HEAD</span>
             {/if}
           </div>
           <div class="branch-msg">{r.msg}</div>
@@ -118,7 +118,7 @@
               <span>{r.duration}</span>
               <span>{r.tokens.toLocaleString()} tok</span>
               <span>${r.cost.toFixed(2)}</span>
-              <span class="git-checkout" style="margin-left: auto; cursor: pointer;">
+              <span class="git-checkout git-checkout-inline">
                 <Icon name="refresh" size={10} />git checkout
               </span>
             {/if}

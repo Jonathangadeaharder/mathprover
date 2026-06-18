@@ -10,6 +10,7 @@
   import Topbar from '$lib/components/Topbar.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import GraphView from '$lib/components/GraphView.svelte';
+  import DAGTracks from '$lib/components/DAGTracks.svelte';
   import NodeDetail from '$lib/components/NodeDetail.svelte';
   import FrontierView from '$lib/components/FrontierView.svelte';
   import PaperLeanView from '$lib/components/PaperLeanView.svelte';
@@ -20,10 +21,10 @@
   import PremisePicker from '$lib/components/PremisePicker.svelte';
 
   onMount(() => {
-    if (!app.openedProject) goto('/');
+    if (!app.projectRoot) goto('/');
   });
   $effect(() => {
-    if (!app.openedProject) goto('/');
+    if (!app.projectRoot) goto('/');
   });
 
   let provenCount = $derived(NODES.filter((n) => statusKey(n.status) === 'PROVEN').length);
@@ -63,7 +64,7 @@
   <title>{projectName} · MathProver</title>
 </svelte:head>
 
-{#if app.openedProject}
+{#if app.projectRoot}
   <div class="app-shell">
     <Topbar />
     <Sidebar />
@@ -73,10 +74,17 @@
           <h1>Graph</h1>
           <span class="subtle">{NODES.length} theorems · {provenCount} proven</span>
         </div>
-        <div class="pane-body" style="position: relative;">
+        <div class="pane-body pane-body-relative">
           <GraphView />
           <NodeDetail />
         </div>
+
+      {:else if app.route === 'tracks'}
+        <div class="pane-header">
+          <h1>Tracks</h1>
+          <span class="subtle">Proof lanes by dependency depth, status, and active work</span>
+        </div>
+        <DAGTracks />
 
       {:else if app.route === 'frontier'}
         <div class="pane-header">
@@ -90,7 +98,7 @@
           <h1>Paper ⇄ Lean</h1>
           <span class="subtle">Click a theorem on either side to sync</span>
           <select
-            style="margin-left: auto; font-size: 11.5px; padding: 4px 8px;"
+            class="pane-header-select"
             value={app.paperLeanNodeId}
             onchange={(e) => (app.paperLeanNodeId = (e.currentTarget as HTMLSelectElement).value)}
           >
@@ -133,7 +141,7 @@
           <h1>Definitions</h1>
           <span class="subtle">Primitive notions — structures, defs, abstractions the theorems build on</span>
         </div>
-        <div class="pane-body" style="padding: 0;">
+        <div class="pane-body pane-body-flush">
           <DefinitionsView />
         </div>
       {/if}
@@ -151,9 +159,9 @@
   {/if}
 
   {#if dispatchError}
-    <div style="position:fixed;bottom:16px;right:16px;z-index:9999;background:#5b2620;color:#ffd5cf;padding:10px 14px;border-radius:8px;font-size:12px;max-width:360px;">
+    <div class="toast-error">
       <strong>Dispatch failed</strong> — {dispatchError}
-      <button class="btn sm" style="margin-left:8px;" onclick={() => (dispatchError = null)}>Dismiss</button>
+      <button class="btn sm toast-error-dismiss" onclick={() => (dispatchError = null)}>Dismiss</button>
     </div>
   {/if}
 {/if}

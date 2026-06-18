@@ -1,13 +1,23 @@
 export type NodeStatus =
   | "PROVEN"
+  | "DISPROVEN"
   | "SORRIES"
-  | "PROGRESS"
-  | "FAILED"
+  | "IN_PROGRESS"
+  | "STUCK"
+  | "DRAFT"
+  | "REJECTED"
   | "BLOCKED"
   | "READY"
   | "UNEXPLORED";
 
-export type AttemptResult = "PROVEN" | "PARTIAL" | "PROGRESS" | "FAILED";
+export type AttemptResult =
+  | "PROVEN"
+  | "PARTIAL"
+  | "PROGRESS"
+  | "FAILED"
+  | "DISPROVEN";
+
+export type EdgeSufficiency = "sufficient" | "insufficient" | "unknown";
 
 export interface Attempt {
   id: string;
@@ -56,6 +66,7 @@ export interface TheoremNode {
   attemptsLog?: Attempt[];
   proof_folder?: string;
   worker_state?: "todo" | "in_progress" | "done" | string;
+  sufficiencyOverride?: Record<string, EdgeSufficiency>;
 }
 
 export type DefinitionKind =
@@ -215,6 +226,7 @@ export interface ProjectData {
 
 export type Route =
   | "graph"
+  | "tracks"
   | "frontier"
   | "paper-lean"
   | "agents"
@@ -223,9 +235,7 @@ export type Route =
   | "definitions";
 
 export interface Tweaks {
-  theme: "dark" | "light";
-  graph_layout: "dag" | "radial" | "force";
-  density: "compact" | "comfortable";
+  graph_layout: "dag" | "radial";
   accent: string;
   show_proven: boolean;
 }
