@@ -231,7 +231,7 @@ export type Route =
 
 export interface Tweaks {
   theme: "dark" | "light";
-  graph_layout: "dag" | "radial" | "force";
+  graph_layout: "dag" | "radial";
   density: "compact" | "comfortable";
   accent: string;
   show_proven: boolean;

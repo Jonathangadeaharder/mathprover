@@ -55,7 +55,7 @@
     <div class="pl-pane-header">
       <Icon name="page" size={12} />
       <span class="filepath">paper/main.tex</span>
-      <span style="font-size: 10.5px; color: var(--fg-3); margin-left: 8px;">§5</span>
+      <span class="pl-section-tag">§5</span>
       <span class="pl-lang">TeX</span>
     </div>
     <div class="paper-doc">
@@ -78,7 +78,7 @@
             <span class="label">{b.label}.</span>
             {b.text}
             {#if b.math}<div class="math">{b.math}</div>{/if}
-            {#if b.after}<div style="margin-top: 6px;">{b.after}</div>{/if}
+            {#if b.after}<div class="pl-after">{b.after}</div>{/if}
           </div>
         {/if}
       {/each}

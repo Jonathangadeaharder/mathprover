@@ -99,34 +99,4 @@ export const TERMS_BY_NAME: TermLookup = recordProxy(() => d().terms);
 export const sampleProject = (): Project => d().project;
 export const activeAgent = (): LiveAgent | null => d().activeAgent;
 
-// Back-compat names used in older imports.
-export const SAMPLE_PROJECT = new Proxy({} as Project, {
-  get(_t, p) {
-    return Reflect.get(d().project, p);
-  },
-  ownKeys() {
-    return Reflect.ownKeys(d().project);
-  },
-  getOwnPropertyDescriptor(_t, p) {
-    const desc = Object.getOwnPropertyDescriptor(d().project, p);
-    if (desc) desc.configurable = true;
-    return desc;
-  },
-});
 
-export const ACTIVE_AGENT = new Proxy({} as LiveAgent, {
-  get(_t, p) {
-    const a = d().activeAgent;
-    return a ? Reflect.get(a, p) : undefined;
-  },
-  ownKeys() {
-    return d().activeAgent ? Reflect.ownKeys(d().activeAgent!) : [];
-  },
-  getOwnPropertyDescriptor(_t, p) {
-    const a = d().activeAgent;
-    if (!a) return undefined;
-    const desc = Object.getOwnPropertyDescriptor(a, p);
-    if (desc) desc.configurable = true;
-    return desc;
-  },
-});

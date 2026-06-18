@@ -95,5 +95,5 @@
 </aside>
 
 <style>
-  .nav-item { all: unset; cursor: pointer; }
+  .nav-item { width: 100%; text-align: left; }
 </style>

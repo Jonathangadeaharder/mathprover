@@ -65,14 +65,14 @@
     <div class="modal-header">
       <h2>Confirm dispatch · {node.paper_id}</h2>
       <p class="lede">
-        The agent will load <strong style="color: var(--fg-0)">{enabledCount}</strong> premises into its context
-        (<span style="font-family: var(--font-mono)">~{(totalTokens / 1000).toFixed(1)}k</span> tokens).
+        The agent will load <strong class="fg-0">{enabledCount}</strong> premises into its context
+        (<span class="mono-sm">~{(totalTokens / 1000).toFixed(1)}k</span> tokens).
         Uncheck retrievals you think are noise; required dependencies and the paper passage are pinned.
       </p>
     </div>
     <div class="modal-body">
       <div class="sec-label">Dependencies (required)</div>
-      <div class="premise-list" style="margin-bottom: 16px;">
+      <div class="premise-list premise-list-mb">
         {#each premises as p, i (p.name)}
           {#if p.kind === 'dep'}
             <button class="premise-row on" type="button" onclick={() => toggle(i)}>
@@ -80,7 +80,7 @@
               <div>
                 <span class="name">{p.name}</span>
                 <span class="badge-d">dep</span>
-                <div class="src" style="margin-top: 2px;">{p.src}</div>
+                <div class="src src-mt">{p.src}</div>
               </div>
               <div class="score">pinned</div>
             </button>
@@ -90,11 +90,11 @@
 
       <div class="sec-label">
         Mathlib retrieval (semantic search)
-        <span style="margin-left: 8px; font-size: 10px; color: var(--fg-4); text-transform: none; letter-spacing: 0;">
+        <span class="sec-label-hint">
           relevance ≥ 0.6 enabled by default
         </span>
       </div>
-      <div class="premise-list" style="margin-bottom: 16px;">
+      <div class="premise-list premise-list-mb">
         {#each premises as p, i (p.name + i)}
           {#if p.kind === 'mathlib'}
             <button class="premise-row" class:on={enabled[i]} class:off={!enabled[i]} type="button" onclick={() => toggle(i)}>
@@ -102,7 +102,7 @@
               <div>
                 <span class="name">{p.name}</span>
                 <span class="badge-m">mathlib</span>
-                <div class="src" style="margin-top: 2px;">{p.src}</div>
+                <div class="src src-mt">{p.src}</div>
               </div>
               <div class="score">{p.score.toFixed(2)}</div>
             </button>
@@ -118,8 +118,8 @@
               <div class="check"><Icon name="check" size={10} /></div>
               <div>
                 <span class="name">{p.name}</span>
-                <span class="badge-d" style="background: var(--st-progress-bg); color: var(--st-progress);">paper</span>
-                <div class="src" style="margin-top: 2px;">{p.src}</div>
+                <span class="badge-d badge-paper">paper</span>
+                <div class="src src-mt">{p.src}</div>
               </div>
               <div class="score">pinned</div>
             </button>
@@ -128,18 +128,18 @@
       </div>
     </div>
     <div class="modal-footer">
-      <div style="font-size: 11px; color: var(--fg-3);">
+      <div class="mono-sm-11">
         {#if routePreview}
-          Routing to <strong style="color: var(--fg-0)">{routePreview.prover}</strong>
+          Routing to <strong class="fg-0">{routePreview.prover}</strong>
           — {routePreview.reason}
           {#if routePreview.goedelLocked && routePreview.prover === 'goedel'}
-            <span style="color: var(--st-sorries);"> · Goedel busy</span>
+            <span class="axiom-warn"> · Goedel busy</span>
           {/if}
         {:else}
-          Routing to <strong style="color: var(--fg-0)">{modelObj.name}</strong>
+          Routing to <strong class="fg-0">{modelObj.name}</strong>
         {/if}
       </div>
-      <div style="margin-left: auto; display: flex; gap: 6px;">
+      <div class="ml-auto flex-gap-sm">
         <button class="btn" onclick={oncancel} disabled={dispatching}>Cancel</button>
         <button class="btn primary" onclick={onconfirm} disabled={dispatching || (routePreview?.goedelLocked && routePreview?.prover === 'goedel')}>
           <Icon name="play" size={11} />{dispatching ? 'Dispatching…' : 'Dispatch'}
@@ -150,7 +150,6 @@
 </div>
 
 <style>
-  .premise-row { all: unset; cursor: pointer; }
   .sec-label {
     font-size: 10.5px;
     text-transform: uppercase;

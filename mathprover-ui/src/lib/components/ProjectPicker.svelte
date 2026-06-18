@@ -53,16 +53,16 @@
       {#each RECENT_PROJECTS as p, i (p.name)}
         <button class="recent-row" type="button" onclick={() => open(p.path)}>
           <Icon name="folder" size={14} />
-          <div style="flex: 1; min-width: 0; text-align: left;">
+          <div class="recent-info">
             <div class="ttl">{p.name}</div>
             <div class="path">{p.path}</div>
           </div>
           <div class="meta">
-            <span style="color: var(--st-proven)">{p.proven}</span>
-            <span style="color: var(--fg-4)"> / </span>
+            <span class="axiom-ok">{p.proven}</span>
+            <span class="fg-4"> / </span>
             <span>{p.thms}</span> thms
           </div>
-          <div class="meta" style="width: 60px; text-align: right;">{p.updated}</div>
+          <div class="meta recent-updated">{p.updated}</div>
         </button>
       {/each}
     </div>
@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <div style="display: flex; justify-content: flex-end; margin-top: 24px; gap: 8px;">
+    <div class="picker-actions">
       <button class="btn ghost">Documentation</button>
       <button class="btn primary" onclick={() => open()}>
         {autoDetected ? 'Open detected project' : 'Open project'}

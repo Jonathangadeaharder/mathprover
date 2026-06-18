@@ -219,7 +219,6 @@
   }
   .defs-scroll { flex: 1; overflow-y: auto; padding-bottom: 8px; }
   .def-row {
-    all: unset;
     cursor: pointer;
     display: grid;
     grid-template-columns: auto 1fr auto;
@@ -302,7 +301,7 @@
   .meta code { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-1); }
   .dep-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .dep-chip {
-    all: unset; cursor: pointer;
+    cursor: pointer;
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--bg-2);
     border: 1px solid var(--border-1);

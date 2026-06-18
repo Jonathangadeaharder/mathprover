@@ -2787,6 +2787,286 @@ select:focus {
 
 /* --- extracted inline styles --- */
 
+/* utility classes */
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.mono-code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--fg-1);
+}
+.empty-state {
+  color: var(--fg-3);
+  text-align: center;
+  padding: 40px;
+  font-size: 12px;
+}
+.flex-gap-sm {
+  display: flex;
+  gap: 6px;
+}
+.pct-label {
+  margin-left: 8px;
+}
+.kind-pill {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--fg-3);
+  text-transform: lowercase;
+}
+.file-path-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.axiom-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.axiom-ok { color: var(--st-proven); }
+.axiom-warn { color: var(--st-sorries); }
+.axiom-text { color: var(--fg-1); }
+.map-seg-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: var(--bg-2);
+  padding: 3px;
+  border-radius: var(--r);
+}
+.map-seg-btn {
+  flex: 1;
+}
+.detail-section-mt {
+  margin-top: 18px;
+}
+.kbd-mono {
+  font-family: var(--font-mono);
+}
+.accent-text {
+  color: var(--accent);
+}
+.meta-text {
+  font-size: 12px;
+  color: var(--fg-2);
+  line-height: 1.55;
+}
+.capstone-flag {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.capitalize { text-transform: capitalize; }
+.italic-fg3 { color: var(--fg-3); font-style: italic; }
+.name-sm-fg3 { font-size: 11px; color: var(--fg-3); }
+.fg-0 { color: var(--fg-0); }
+.badge-paper {
+  background: var(--st-progress-bg);
+  color: var(--st-progress);
+}
+.fg-4 { color: var(--fg-4); }
+.frontier-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.frontier-h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.frontier-subtitle {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.frontier-desc {
+  font-size: 12px;
+  color: var(--fg-3);
+  margin: 4px 0 0;
+}
+.meter-label {
+  font-size: 10.5px;
+  color: var(--fg-3);
+  text-align: center;
+  font-family: var(--font-mono);
+  margin-top: 3px;
+}
+.meter-empty {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+}
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.blocker-count {
+  font-size: 10.5px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+}
+/* AgentView utilities */
+.agent-runs-head {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px 10px;
+  justify-content: space-between;
+}
+.section-label-sm {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+/* PremisePicker utilities */
+.src-mt { margin-top: 2px; }
+.premise-list-mb { margin-bottom: 16px; }
+.graph-svg-base {
+  width: 2400px;
+  height: 1600px;
+  overflow: visible;
+  position: absolute;
+  pointer-events: none;
+}
+.graph-legend-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+/* FailuresView utilities */
+.failures-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-1);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.failures-summary {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+.failures-cost {
+  font-size: 11px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+.fail-counter-label {
+  font-size: 10px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.fail-view-btn {
+  margin-left: auto;
+  padding: 2px 6px;
+}
+/* PaperLeanView utilities */
+.pl-section-tag {
+  font-size: 10.5px;
+  color: var(--fg-3);
+  margin-left: 8px;
+}
+.pl-after {
+  margin-top: 6px;
+}
+/* ProjectPicker utilities */
+.recent-info {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.recent-updated {
+  width: 60px;
+  text-align: right;
+}
+.picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  gap: 8px;
+}
+/* RunAgentButton utilities */
+.split-btn-label {
+  opacity: 0.7;
+  font-size: 11px;
+  margin-left: 2px;
+}
+.route-to-label {
+  padding: 6px 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+.opt-text-left {
+  text-align: left;
+}
+/* TweaksPanel utilities */
+.swatch-row {
+  display: flex;
+  gap: 6px;
+}
+.sec-label-hint {
+  margin-left: 8px;
+  font-size: 10px;
+  color: var(--fg-4);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mono-sm-10 {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+.mono-sm-11 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.ml-auto { margin-left: auto; }
+.live-indicator { color: var(--st-progress); }
+.run-detail-target {
+  font-size: 13px;
+  color: var(--fg-0);
+  font-weight: 500;
+}
+.run-strategy {
+  padding-left: 22px;
+  font-size: 12px;
+  color: var(--fg-2);
+  font-style: italic;
+}
+.waiting-msg {
+  color: var(--fg-3);
+  font-size: 12px;
+}
+.no-runs-msg {
+  padding: 24px;
+  color: var(--fg-3);
+  font-size: 13px;
+}
+
 .error-banner {
   position: fixed;
   top: 8px;

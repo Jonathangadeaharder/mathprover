@@ -230,7 +230,7 @@
   tabindex="0"
 >
   <div class="graph-canvas" style:transform="translate({drag.x}px, {drag.y}px) scale({drag.scale})">
-    <svg class="graph-svg" style="width: 2400px; height: 1600px; overflow: visible; position: absolute; pointer-events: none;">
+    <svg class="graph-svg graph-svg-base">
       <defs>
         <marker id="arrow" viewBox="0 -3 6 6" refX="6" refY="0" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0,-3 L6,0 L0,3 Z" class="edge-arrow" />
@@ -297,7 +297,7 @@
         {/if}
         <div class="gn-meta">
           <StatusPill status={n.status} />
-          <span style="margin-left: auto;">
+          <span class="ml-auto">
             {n.attempts > 0 ? `${n.attempts} attempt${n.attempts > 1 ? 's' : ''}` : '—'}
           </span>
         </div>
@@ -322,7 +322,7 @@
     {#each legend as s (s)}
       <div class="row">
         <span class="swatch" style:border-color="var(--st-{s.toLowerCase()})" style:background="var(--st-{s.toLowerCase()}-bg)"></span>
-        <span style="font-family: var(--font-mono); font-size: 10.5px;">{s.toLowerCase()}</span>
+        <span class="graph-legend-label">{s.toLowerCase()}</span>
       </div>
     {/each}
   </div>

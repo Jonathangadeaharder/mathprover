@@ -153,23 +153,23 @@
 
 <div class="agent-shell">
   <div class="agent-list">
-    <div style="display: flex; align-items: center; padding: 4px 8px 10px; justify-content: space-between;">
-      <span style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); font-weight: 600;">Agent runs</span>
-      <span style="font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-3);">{runs.length}</span>
+    <div class="agent-runs-head">
+      <span class="section-label-sm">Agent runs</span>
+      <span class="mono-sm-10">{runs.length}</span>
     </div>
     {#each runs as r (r.id)}
       <button class="agent-list-row" class:active={activeRunId === r.id} type="button" onclick={() => (activeRunId = r.id)}>
         <div class="ttl">{r.nodeName}</div>
         <div class="row">
           <span class="agent-name">{r.agent}</span>
-          <span style="margin-left: auto;">
+          <span class="ml-auto">
             <StatusPill status={r.result === 'PARTIAL' ? 'SORRIES' : r.result} />
           </span>
         </div>
         <div class="row" style="margin-top: 4px; color: var(--fg-3);">
-          <span style="font-family: var(--font-mono); font-size: 10.5px;">{r.nodePid}</span>
+          <span class="mono-sm-10">{r.nodePid}</span>
           <span class="dur">
-            {#if r.isLive}<span style="color: var(--st-progress);">● live</span>{:else}{r.duration}{/if}
+            {#if r.isLive}<span class="live-indicator">● live</span>{:else}{r.duration}{/if}
           </span>
         </div>
       </button>
@@ -183,16 +183,16 @@
       <button class="tab" class:active={view === 'log'} onclick={() => (view = 'log')}>Streaming log</button>
       <div class="spacer"></div>
       <div class="actions">
-        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); margin-right: 12px;">
+        <span class="mono-sm-11" style="margin-right: 12px;">
           {run.agent} · {run.duration}
         </span>
         {#if run.isLive}
-          <span style="font-size: 11px; color: var(--st-progress);">● running</span>
+          <span class="live-indicator" style="font-size: 11px;">● running</span>
           {#if activeAgent()?.detail}
             <span style="font-size: 11px; color: var(--fg-3); margin-left: 8px;">{activeAgent()?.detail}</span>
           {/if}
           {#if activeAgent()?.tokensGenerated}
-            <span style="font-size: 11px; color: var(--fg-3); margin-left: 8px; font-family: var(--font-mono);">
+            <span class="mono-sm-11" style="margin-left: 8px;">
               {activeAgent()?.tokensGenerated} tok
               {#if activeAgent()?.tokensPerSec} · {activeAgent()?.tokensPerSec?.toFixed(1)} tok/s{/if}
             </span>
@@ -207,17 +207,17 @@
           <div style="margin-bottom: 24px;">
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
               <Icon name="target" size={14} />
-              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);">Target</span>
-              <span style="font-size: 13px; color: var(--fg-0); font-weight: 500;">{run.nodeName}</span>
-              <span style="margin-left: auto;">
+              <span class="mono-sm-11">Target</span>
+              <span class="run-detail-target">{run.nodeName}</span>
+              <span class="ml-auto">
                 <StatusPill status={run.result === 'PARTIAL' ? 'SORRIES' : run.result} />
               </span>
             </div>
-            <div style="padding-left: 22px; font-size: 12px; color: var(--fg-2); font-style: italic;">{run.strategy}</div>
+            <div class="run-strategy">{run.strategy}</div>
           </div>
 
           {#if steps.length === 0}
-            <p style="color: var(--fg-3); font-size: 12px;">Waiting for pipeline events… switch to Streaming log for raw output.</p>
+            <p class="waiting-msg">Waiting for pipeline events… switch to Streaming log for raw output.</p>
           {/if}
           {#each steps as s, i (i)}
             <div class="tl-step">
@@ -250,11 +250,11 @@
       {/if}
     </div>
     {:else}
-      <div style="padding: 24px; color: var(--fg-3); font-size: 13px;">No agent runs yet. Dispatch from the graph or frontier.</div>
+      <div class="no-runs-msg">No agent runs yet. Dispatch from the graph or frontier.</div>
     {/if}
   </div>
 </div>
 
 <style>
-  .agent-list-row, .tab { all: unset; cursor: pointer; display: block; }
+  .agent-list-row, .tab { display: block; }
 </style>

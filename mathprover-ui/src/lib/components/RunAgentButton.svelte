@@ -30,7 +30,7 @@
   <div class="split-btn" style:opacity={disabled ? 0.5 : 1} style:pointer-events={disabled ? 'none' : 'auto'}>
     <button onclick={() => onrun(model)}>
       <Icon name="play" size={11} />
-      {label} <span style="opacity: 0.7; font-size: 11px; margin-left: 2px;">· {modelObj.id === 'auto' ? 'auto' : modelObj.name.split('-')[0]}</span>
+      {label} <span class="split-btn-label">· {modelObj.id === 'auto' ? 'auto' : modelObj.name.split('-')[0]}</span>
     </button>
     <button class="caret" onclick={() => (open = !open)} aria-label="select model">
       <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
@@ -40,13 +40,13 @@
   </div>
   {#if open}
     <div class="model-menu">
-      <div style="padding: 6px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); font-weight: 600;">Route to</div>
+      <div class="route-to-label">Route to</div>
       {#each DISPATCH_MODELS as m (m.id)}
         <button class="opt" class:active={m.id === model} type="button" onclick={() => { model = m.id; open = false; }}>
           <span>
             {#if m.id === model}<Icon name="check" size={12} />{/if}
           </span>
-          <div style="text-align: left;">
+          <div class="opt-text-left">
             <div class="name">{m.name}</div>
             <div class="desc">{m.desc}</div>
           </div>
@@ -59,15 +59,6 @@
 
 <style>
   .model-menu button.opt {
-    all: unset;
-    display: grid;
-    grid-template-columns: 14px 1fr auto;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 10px;
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    font-size: 12px;
     width: 100%;
     box-sizing: border-box;
   }

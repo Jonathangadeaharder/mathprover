@@ -124,7 +124,7 @@ test.describe('Node detail panel', () => {
     await stage.getByText('Kernel Founder Mass Lemma').click();
     const overlay = page.locator('.detail-overlay');
     await overlay.getByRole('button', { name: 'Subgoals' }).click();
-    await expect(overlay.getByText('No open subgoals.')).toBeVisible();
+    await expect(overlay.getByText('Theorem is fully derived.')).toBeVisible();
   });
 
   test('mapping tab shows LaTeX mapping', async ({ page }) => {
