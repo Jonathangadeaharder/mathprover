@@ -124,9 +124,10 @@ jobs:
     if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
-      - uses: returntocorp/semgrep-action@v1
+      - uses: astral-sh/setup-uv@v5
         with:
-          config: .semgrep.yml
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uvx semgrep --config .semgrep.yml --error agents scripts
 
   codeql:
     name: CodeQL Analysis
