@@ -23,7 +23,7 @@
       <Icon name="page" size={10} />
       {info.src}
       {#if info.nodeId}
-        <span style="margin-left: auto; color: var(--accent)">→ open node</span>
+        <span class="popover-action">→ open node</span>
       {/if}
     </div>
   </div>

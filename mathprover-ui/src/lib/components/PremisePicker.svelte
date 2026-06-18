@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import { DISPATCH_MODELS, app } from '$lib/stores.svelte';
-  import { NODE_BY_ID } from '$lib/data';
+  import { NODE_BY_ID, DEFINITIONS } from '$lib/data';
   import { fetchDispatchPreview } from '$lib/api';
   import type { TheoremNode } from '$lib/types';
 
@@ -18,22 +18,17 @@
 
   function generatePremises(n: TheoremNode): Premise[] {
     const out: Premise[] = [];
-    (n.depends_on || []).forEach((d) => {
+    for (const d of n.depends_on || []) {
       const dep = NODE_BY_ID[d];
-      if (!dep) return;
+      if (!dep) continue;
       out.push({ name: dep.lean_theorem, src: dep.lean_file, score: 1.0, kind: 'dep', auto: true });
-    });
-    const mathlibBank: Premise[] = [
-      { name: 'additive_drift_bound', src: 'Mathlib.Probability.AdditiveDrift', score: 0.94, kind: 'mathlib' },
-      { name: 'markov_geometric_restart', src: 'Mathlib.Probability.GeometricRestart', score: 0.91, kind: 'mathlib' },
-      { name: 'Real.exp_neg_le_one_sub_of_nonneg', src: 'Mathlib.Analysis.SpecialFunctions.Exp', score: 0.78, kind: 'mathlib' },
-      { name: 'Finset.sum_le_sum_of_subset', src: 'Mathlib.Algebra.BigOperators.Basic', score: 0.62, kind: 'mathlib' },
-      { name: 'Measure.tprod_eq_prod', src: 'Mathlib.MeasureTheory.Product', score: 0.86, kind: 'mathlib' },
-      { name: 'MeasureTheory.UniformIntegrable.of_bounded', src: 'Mathlib.MeasureTheory.UniformIntegrable', score: 0.71, kind: 'mathlib' },
-      { name: 'Nat.log_le_log', src: 'Mathlib.Data.Nat.Log', score: 0.55, kind: 'mathlib' },
-      { name: 'one_sub_inv_pow_lower_bound', src: 'Mathlib.Analysis.Asymptotics', score: 0.49, kind: 'mathlib' },
-    ];
-    (n.id === 'thm_5_4' ? mathlibBank.slice(0, 6) : mathlibBank.slice(0, 4)).forEach((p) => out.push(p));
+    }
+    const usedDefIds = new Set(n.uses_defs || []);
+    for (const def of DEFINITIONS) {
+      if (usedDefIds.has(def.id)) {
+        out.push({ name: def.lean_name, src: def.lean_file, score: 0.85, kind: 'mathlib', auto: true });
+      }
+    }
     out.push({ name: '@paper:' + n.paper_section, src: 'paper/main.tex', score: 1.0, kind: 'paper', auto: true });
     return out;
   }
@@ -66,7 +61,7 @@
 </script>
 
 <div class="modal-backdrop" onclick={oncancel} role="presentation">
-  <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+  <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Escape') oncancel(); e.stopPropagation(); }} role="dialog" aria-modal="true" tabindex="-1">
     <div class="modal-header">
       <h2>Confirm dispatch · {node.paper_id}</h2>
       <p class="lede">

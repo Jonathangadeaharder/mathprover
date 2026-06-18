@@ -46,7 +46,7 @@
         <div class="head">
           <Icon name="x" size={12} />
           <div class="target">{f.targetName}</div>
-          <StatusPill status="FAILED" />
+          <StatusPill status="STUCK" />
         </div>
         <div class="approach">{f.approach}</div>
         <div class="why">{f.why}</div>

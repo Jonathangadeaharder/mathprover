@@ -4,7 +4,7 @@
   import { app, tweaks } from '$lib/stores.svelte';
   import { NODES, NODE_BY_ID, CHILDREN_BY_ID, activeAgent } from '$lib/data';
   import { statusKey } from '$lib/lean';
-  import type { TheoremNode } from '$lib/types';
+  import type { TheoremNode, EdgeSufficiency } from '$lib/types';
 
   const NODE_W = 200;
   const NODE_H = 96;
@@ -17,22 +17,26 @@
     const byId: Record<string, TheoremNode> = Object.fromEntries(nodes.map((n) => [n.id, n]));
     const layerOf: Record<string, number> = {};
 
-    function layer(id: string): number {
+    function layer(id: string, visiting?: Set<string>): number {
       if (layerOf[id] !== undefined) return layerOf[id];
       const n = byId[id];
       if (!n) return 0;
+      if (visiting?.has(id)) return 0;
+      const next = new Set(visiting);
+      next.add(id);
       const deps = (n.depends_on || []).filter((d) => byId[d]);
-      const l = deps.length === 0 ? 0 : 1 + Math.max(...deps.map(layer));
+      const l = deps.length === 0 ? 0 : 1 + Math.max(...deps.map((d) => layer(d, next)));
       layerOf[id] = l;
       return l;
     }
-    nodes.forEach((n) => layer(n.id));
+    for (const n of nodes) layer(n.id);
 
     const layers: Record<number, string[]> = {};
-    nodes.forEach((n) => {
+    for (const n of nodes) {
       const L = layerOf[n.id];
-      (layers[L] = layers[L] || []).push(n.id);
-    });
+      layers[L] = layers[L] || [];
+      layers[L].push(n.id);
+    }
 
     const positions: Record<string, Pos> = {};
 
@@ -41,7 +45,10 @@
         const ids = layers[+L];
         ids.sort((a, b) => (byId[b].importance || 0) - (byId[a].importance || 0));
         const arr: string[] = [];
-        ids.forEach((id, i) => { if (i % 2 === 0) arr.push(id); else arr.unshift(id); });
+        for (let i = 0; i < ids.length; i++) {
+          if (i % 2 === 0) arr.push(ids[i]);
+          else arr.unshift(ids[i]);
+        }
         const total = arr.length * (NODE_W + NODE_GAP) - NODE_GAP;
         arr.forEach((id, i) => {
           positions[id] = { x: 400 - total / 2 + i * (NODE_W + NODE_GAP), y: 80 + +L * LAYER_H };
@@ -93,7 +100,7 @@
   let nodeDrag = $state<{ id: string; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
   let stageEl: HTMLDivElement;
 
-  $effect(() => { void tweaks.graph_layout; void tweaks.show_proven; nodePos = {}; });
+  $effect(() => { void tweaks.graph_layout; void tweaks.show_proven; nodePos = {}; centerView(); });
 
   let related = $derived.by(() => {
     const focus = app.hoveredId || app.selectedNodeId;
@@ -110,7 +117,7 @@
   }
 
   let edges = $derived.by(() => {
-    const out: { key: string; path: string; isHi: boolean; isDim: boolean }[] = [];
+    const out: { key: string; path: string; isHi: boolean; isDim: boolean; suff: EdgeSufficiency }[] = [];
     visibleNodes.forEach((n) => {
       (n.depends_on || []).forEach((d) => {
         if (!positions[d] || !positions[n.id]) return;
@@ -124,7 +131,18 @@
         const path = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`;
         const isHi = related ? (related.has(d) && related.has(n.id)) : false;
         const isDim = related ? !isHi : false;
-        out.push({ key: `${d}->${n.id}`, path, isHi, isDim });
+        const childSk = statusKey(NODE_BY_ID[d]?.status || '');
+        const parentSk = statusKey(n.status);
+        let suff: EdgeSufficiency = 'unknown';
+        const override = n.sufficiencyOverride?.[d];
+        if (override) {
+          suff = override;
+        } else if (childSk === 'PROVEN' && parentSk === 'PROVEN') {
+          suff = 'sufficient';
+        } else if (childSk === 'PROVEN' && ['SORRIES', 'STUCK', 'BLOCKED', 'IN_PROGRESS', 'DRAFT'].includes(parentSk)) {
+          suff = 'insufficient';
+        }
+        out.push({ key: `${d}->${n.id}`, path, isHi, isDim, suff });
       });
     });
     return out;
@@ -174,11 +192,26 @@
     drag = { scale: ns, x: mx - (mx - drag.x) * k, y: my - (my - drag.y) * k };
   }
 
-  function fit() { drag = { x: 0, y: 0, scale: 0.85 }; nodePos = {}; }
+  function centerView(scale = 0.85) {
+    if (!stageEl) return;
+    const rect = stageEl.getBoundingClientRect();
+    const ps = visibleNodes.map((n) => positions[n.id]).filter(Boolean);
+    if (ps.length === 0) { drag = { x: 0, y: 0, scale }; return; }
+    const xs = ps.map((p) => p.x);
+    const ys = ps.map((p) => p.y);
+    const cx = (Math.min(...xs) + Math.max(...xs) + NODE_W) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys) + NODE_H) / 2;
+    drag = { scale, x: rect.width / 2 - cx * scale, y: rect.height / 2 - cy * scale };
+  }
 
-  const legend = ['PROVEN','SORRIES','PROGRESS','READY','FAILED','BLOCKED','UNEXPLORED'];
+  function fit() { centerView(); nodePos = {}; }
+
+  const legend = ['PROVEN','DISPROVEN','SORRIES','IN_PROGRESS','STUCK','DRAFT','REJECTED','BLOCKED','READY','UNEXPLORED'];
+  const activeRun = $derived(activeAgent());
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="graph-stage"
   bind:this={stageEl}
@@ -187,8 +220,14 @@
   onmouseup={endDrag}
   onmouseleave={endDrag}
   onwheel={onWheel}
+  onkeydown={(e) => {
+    if (e.key === 'Escape') { app.selectedNodeId = null; }
+    else if (e.key === '=' || e.key === '+') { zoom(1.15); e.preventDefault(); }
+    else if (e.key === '-') { zoom(0.85); e.preventDefault(); }
+  }}
   role="application"
   aria-label="Theorem dependency graph"
+  tabindex="0"
 >
   <div class="graph-canvas" style:transform="translate({drag.x}px, {drag.y}px) scale({drag.scale})">
     <svg class="graph-svg" style="width: 2400px; height: 1600px; overflow: visible; position: absolute; pointer-events: none;">
@@ -199,6 +238,12 @@
         <marker id="arrow-hi" viewBox="0 -3 6 6" refX="6" refY="0" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0,-3 L6,0 L0,3 Z" class="edge-arrow highlighted" />
         </marker>
+        <marker id="arrow-sufficient" viewBox="0 -3 6 6" refX="6" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,-3 L6,0 L0,3 Z" class="edge-arrow suff-sufficient" />
+        </marker>
+        <marker id="arrow-insufficient" viewBox="0 -3 6 6" refX="6" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,-3 L6,0 L0,3 Z" class="edge-arrow suff-insufficient" />
+        </marker>
       </defs>
       {#each edges as e (e.key)}
         <path
@@ -206,7 +251,9 @@
           class="edge"
           class:highlighted={e.isHi}
           class:dimmed={e.isDim}
-          marker-end={e.isHi ? 'url(#arrow-hi)' : 'url(#arrow)'}
+          class:suff-sufficient={e.suff === 'sufficient'}
+          class:suff-insufficient={e.suff === 'insufficient'}
+          marker-end={e.isHi ? 'url(#arrow-hi)' : e.suff !== 'unknown' ? `url(#arrow-${e.suff === 'sufficient' ? 'sufficient' : 'insufficient'})` : 'url(#arrow)'}
         />
       {/each}
     </svg>
@@ -216,7 +263,7 @@
       {@const sk = statusKey(n.status)}
       {@const isDim = related ? !related.has(n.id) : false}
       {@const isSel = app.selectedNodeId === n.id}
-      {@const isActiveRun = activeAgent()?.node === n.id}
+      {@const isActiveRun = activeRun?.node === n.id || activeRun?.node === n.proof_folder}
       <div
         class="gnode"
         class:selected={isSel}
@@ -228,23 +275,40 @@
         style:width="{NODE_W}px"
         onmousedown={(e) => nodeStartDrag(e, n.id, p)}
         onclick={(e) => { e.stopPropagation(); app.selectedNodeId = n.id; }}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); app.selectedNodeId = n.id; } }}
         onmouseenter={() => (app.hoveredId = n.id)}
         onmouseleave={() => (app.hoveredId = null)}
         role="button"
         tabindex="0"
+        title={isActiveRun ? `${activeRun?.agent} running since ${activeRun?.started}` : n.paper_name}
       >
+        {#if isActiveRun}<span class="run-ring" aria-hidden="true"></span>{/if}
         <div class="gn-id">
           <span>{n.paper_id}</span>
           {#if n.isCapstone}<span class="gn-flag capstone">capstone</span>{/if}
-          {#if isActiveRun}<span class="gn-flag frontier">running</span>{:else if sk === 'READY' && !n.isCapstone}<span class="gn-flag frontier">frontier</span>{/if}
+          {#if isActiveRun}<span class="gn-flag running">{activeRun?.agent || 'running'}</span>{:else if sk === 'READY' && !n.isCapstone}<span class="gn-flag frontier">frontier</span>{/if}
         </div>
         <div class="gn-title">{n.paper_name}</div>
+        {#if n.paper_section}
+          <div class="gn-origin">{n.paper_section}</div>
+        {/if}
+        {#if n.lean_theorem && n.lean_theorem !== n.id && n.lean_theorem !== n.paper_id}
+          <div class="gn-theorem" title={n.lean_theorem}>{n.lean_theorem}</div>
+        {/if}
         <div class="gn-meta">
           <StatusPill status={n.status} />
           <span style="margin-left: auto;">
             {n.attempts > 0 ? `${n.attempts} attempt${n.attempts > 1 ? 's' : ''}` : '—'}
           </span>
         </div>
+        {#if n.attemptsLog && n.attemptsLog.length > 0}
+          {@const agentCounts = n.attemptsLog.reduce((acc, a) => { acc[a.agent] = (acc[a.agent] || 0) + 1; return acc; }, {} as Record<string, number>)}
+          <div class="gn-agents">
+            {#each Object.entries(agentCounts) as [agent, count] (agent)}
+              <span class="agent-chip">{agent} {count}</span>
+            {/each}
+          </div>
+        {/if}
         {#if n.confidence !== null && n.confidence !== undefined}
           <div class="gn-conf" title={`confidence ${((n.confidence) * 100).toFixed(0)}%`}>
             <div class="gn-conf-fill" style:width="{n.confidence * 100}%"></div>

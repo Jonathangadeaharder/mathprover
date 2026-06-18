@@ -1,7 +1,7 @@
 // Lean syntax highlighter + term lookup.
 // Term metadata is loaded per-project from .mathprover/graph.json (`terms` field).
 
-import type { TermInfo, TermLookup } from "./types";
+import type { TermInfo, TermLookup, NodeStatus } from "./types";
 import { project } from "./stores.svelte";
 
 export type { TermInfo } from "./types";
@@ -120,12 +120,16 @@ export function getTerm(name: string): TermInfo | undefined {
   return project.data.terms[name];
 }
 
-export function statusKey(status: string): string {
+export function statusKey(status: string): NodeStatus {
   if (status === "PROVEN" || status === "FULLY_PROVEN") return "PROVEN";
+  if (status === "DISPROVEN" || status === "DISPROVED") return "DISPROVEN";
   if (status === "SORRIES" || status === "PROVEN_WITH_SORRIES")
     return "SORRIES";
-  if (status === "PROGRESS" || status === "IN_PROGRESS") return "PROGRESS";
-  if (status === "FAILED" || status === "ATTEMPTED_FAILED") return "FAILED";
+  if (status === "PROGRESS" || status === "IN_PROGRESS") return "IN_PROGRESS";
+  if (status === "FAILED" || status === "ATTEMPTED_FAILED" || status === "STUCK")
+    return "STUCK";
+  if (status === "DRAFT") return "DRAFT";
+  if (status === "REJECTED") return "REJECTED";
   if (status === "BLOCKED") return "BLOCKED";
   if (status === "READY") return "READY";
   return "UNEXPLORED";

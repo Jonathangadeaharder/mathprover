@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tweaks, persistTweaks, ACCENT_PALETTES } from '$lib/stores.svelte';
+  import type { Tweaks } from '$lib/types';
   import Icon from './Icon.svelte';
 
   let open = $state(false);
@@ -78,14 +79,14 @@
 
       <div class="tw-row">
         <span class="tw-name">Layout</span>
-        <select value={tweaks.graph_layout} onchange={(e) => set('graph_layout', (e.currentTarget as HTMLSelectElement).value as any)}>
+        <select value={tweaks.graph_layout} onchange={(e) => set('graph_layout', (e.currentTarget as HTMLSelectElement).value as Tweaks['graph_layout'])}>
           {#each layouts as l (l.id)}<option value={l.id}>{l.label}</option>{/each}
         </select>
       </div>
 
       <div class="tw-row">
         <span class="tw-name">Show proven nodes</span>
-        <button class="toggle" class:on={tweaks.show_proven} onclick={() => set('show_proven', !tweaks.show_proven)} aria-pressed={tweaks.show_proven}>
+        <button class="toggle" class:on={tweaks.show_proven} onclick={() => set('show_proven', !tweaks.show_proven)} aria-pressed={tweaks.show_proven} aria-label="Toggle showing proven nodes">
           <span class="thumb"></span>
         </button>
       </div>

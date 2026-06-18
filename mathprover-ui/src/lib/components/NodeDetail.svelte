@@ -8,13 +8,46 @@
   import { NODE_BY_ID, CHILDREN_BY_ID, DEF_BY_ID } from '$lib/data';
   import { highlightLean, statusKey } from '$lib/lean';
 
+  type Tab = 'overview' | 'paper' | 'lean' | 'mapping' | 'attempts' | 'sorries';
+
   let node = $derived(app.selectedNodeId ? NODE_BY_ID[app.selectedNodeId] : null);
-  let tab = $state<'overview' | 'mapping' | 'lean' | 'attempts' | 'sorries'>('overview');
+  let tab = $state<Tab>('overview');
   let mappingVariant = $state<'comment' | 'macro' | 'sidecar'>('comment');
+
+  let paperSource = $state<string | null>(null);
+  let leanSource = $state<string | null>(null);
+  let statusMd = $state<string | null>(null);
+  let sourceLoading = $state(false);
+
+  async function loadNodeSource() {
+    if (!node || !app.projectRoot) { paperSource = null; leanSource = null; statusMd = null; return; }
+    sourceLoading = true;
+    try {
+      const folder = node.proof_folder || node.id;
+      const params = new URLSearchParams({ project: app.projectRoot, node: node.id, folder });
+      const res = await fetch(`/api/node-source?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        paperSource = data.paper;
+        leanSource = data.lean;
+        statusMd = data.status;
+      } else {
+        paperSource = null;
+        leanSource = null;
+        statusMd = null;
+      }
+    } catch {
+      paperSource = null;
+      leanSource = null;
+      statusMd = null;
+    }
+    sourceLoading = false;
+  }
 
   $effect(() => {
     void app.selectedNodeId;
     tab = 'overview';
+    loadNodeSource();
   });
 
   let sk = $derived(node ? statusKey(node.status) : 'UNEXPLORED');
@@ -46,18 +79,21 @@
     <div class="detail-header">
       <div class="row">
         <StatusPill status={node.status} />
-        <span class="pid">{node.paper_section} · {node.paper_id}</span>
+        <span class="pid">{node.paper_id}{node.paper_section ? ` · ${node.paper_section}` : ''}</span>
         {#if node.isCapstone}
           <span class="gn-flag capstone" style="font-size: 9.5px; padding: 1px 5px; border-radius: 3px;">CAPSTONE</span>
         {/if}
         <button class="close" onclick={close} aria-label="close"><Icon name="close" size={14} /></button>
       </div>
       <h2>{node.paper_name}</h2>
+      <div class="detail-lean-theorem" style="font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); margin-top: 2px;">
+        {node.lean_theorem}
+      </div>
       <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
-        {#if sk !== 'PROVEN' && sk !== 'PROGRESS'}
+        {#if sk !== 'PROVEN' && sk !== 'IN_PROGRESS' && sk !== 'DISPROVEN' && sk !== 'REJECTED'}
           <RunAgentButton disabled={!allDepsProven && sk === 'BLOCKED'} status={sk} onrun={runAgent} />
         {/if}
-        {#if sk === 'PROGRESS'}
+        {#if sk === 'IN_PROGRESS'}
           <button class="btn" onclick={() => (app.route = 'agents')}>
             <Icon name="activity" size={12} />View live run
           </button>
@@ -71,15 +107,16 @@
     <div class="detail-tabs">
       {#each [
         { id: 'overview', label: 'Overview', count: undefined },
+        { id: 'paper',    label: 'Paper source', count: undefined },
+        { id: 'lean',     label: 'Lean code', count: undefined },
         { id: 'mapping',  label: 'Mapping',  count: undefined },
-        { id: 'lean',     label: 'Lean source', count: undefined },
         { id: 'attempts', label: 'Attempts', count: (node.attemptsLog || []).length },
         { id: 'sorries',  label: 'Subgoals', count: (node.sorries || []).length },
       ] as t (t.id)}
         <button
           class="detail-tab"
           class:active={tab === t.id}
-          onclick={() => (tab = t.id as typeof tab)}
+          onclick={() => (tab = t.id as Tab)}
         >
           {t.label}
           {#if t.count !== undefined && t.count > 0}
@@ -117,7 +154,7 @@
               <dt>Confidence</dt><dd>
                 <Meter
                   value={node.confidence}
-                  color={node.confidence > 0.7 ? 'var(--st-proven)' : node.confidence > 0.4 ? 'var(--st-sorries)' : 'var(--st-failed)'}
+                  color={node.confidence > 0.7 ? 'var(--st-proven)' : node.confidence > 0.4 ? 'var(--st-sorries)' : 'var(--st-stuck)'}
                 />
                 <span style="margin-left: 8px;">{(node.confidence * 100).toFixed(0)}%</span>
               </dd>
@@ -175,11 +212,88 @@
           </section>
         {/if}
 
+        {#if sk !== 'PROVEN' && sk !== 'DISPROVEN' && sk !== 'REJECTED'}
+          <section class="detail-section">
+            <h3>Decompose into sub-lemmas</h3>
+            <p class="split-desc">
+              Split this node into smaller, independently provable sub-lemmas. Each sub-lemma becomes a child node in the graph.
+            </p>
+            <button class="btn sm" disabled title="Split decomposition requires agent integration">
+              <Icon name="split" size={11} />Split into sub-lemmas
+            </button>
+          </section>
+        {/if}
+
         {#if node.note}
           <section class="detail-section">
             <h3>Notes</h3>
-            <div style="font-size: 12px; color: var(--fg-2); line-height: 1.6;">{node.note}</div>
+            <div class="detail-note">{node.note}</div>
           </section>
+        {/if}
+
+      {:else if tab === 'paper'}
+        <section class="detail-section">
+          <h3>paper_source.md</h3>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);">
+            <Icon name="page" size={12} />
+            <span>proofs/{node.proof_folder || node.id}/paper_source.md</span>
+          </div>
+          {#if sourceLoading}
+            <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">Loading...</div>
+          {:else if paperSource}
+            <pre class="code-block paper-source">{paperSource}</pre>
+          {:else}
+            <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">
+              No paper_source.md found for this node.
+            </div>
+          {/if}
+        </section>
+
+        {#if statusMd}
+          <section class="detail-section">
+            <h3>status.md</h3>
+            <pre class="code-block status-source">{statusMd}</pre>
+          </section>
+        {/if}
+
+      {:else if tab === 'lean'}
+        <section class="detail-section">
+          <h3>attempt.lean</h3>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);">
+            <Icon name="page" size={12} />
+            <span>proofs/{node.proof_folder || node.id}/attempt.lean</span>
+          </div>
+          {#if sourceLoading}
+            <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">Loading...</div>
+          {:else if leanSource}
+            <pre class="code-block">{@html highlightLean(leanSource)}</pre>
+          {:else if node.lean_stmt}
+            <pre class="code-block">{@html highlightLean(node.lean_stmt)}</pre>
+          {:else}
+            <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">
+              No Lean source found for this node.
+            </div>
+          {/if}
+        </section>
+
+        {#if leanSource || node.lean_stmt}
+          <div class="detail-section" style="margin-top: 18px;">
+            <h3>Axiom usage</h3>
+            <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12px; font-family: var(--font-mono);">
+              <span style="color: var(--st-proven);">✓</span>
+              <span style="color: var(--fg-1);">propext, Classical.choice, Quot.sound</span>
+              {#if leanSource && leanSource.includes('sorry')}
+                <span style="color: var(--st-sorries);">!</span>
+                <span style="color: var(--fg-1);">Contains open sorry placeholders</span>
+              {:else if node.sorries && node.sorries.length > 0}
+                <span style="color: var(--st-sorries);">!</span>
+                <span style="color: var(--fg-1);">{node.sorries.length} open sorry placeholders</span>
+              {:else}
+                <span style="color: var(--st-proven);">✓</span>
+                <span style="color: var(--fg-1);">No sorry placeholders</span>
+              {/if}
+            </div>
+          </div>
         {/if}
 
       {:else if tab === 'mapping'}
@@ -242,29 +356,6 @@ theorem {node.lean_theorem} ...{/if}</pre>
           </div>
         </section>
 
-      {:else if tab === 'lean'}
-        {#if node.lean_stmt}
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);">
-            <Icon name="page" size={12} />
-            <span>{node.lean_file}{node.lean_line ? `:${node.lean_line}` : ''}</span>
-            <button class="btn ghost sm" style="margin-left: auto;">Open in VS Code</button>
-          </div>
-          <pre class="code-block">{@html highlightLean(node.lean_stmt)}</pre>
-          <div class="detail-section" style="margin-top: 18px;">
-            <h3>Axiom usage</h3>
-            <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12px; font-family: var(--font-mono);">
-              <span style="color: var(--st-proven);">✓</span>
-              <span style="color: var(--fg-1);">propext, Classical.choice, Quot.sound</span>
-              <span style="color: var(--st-sorries);">!</span>
-              <span style="color: var(--fg-1);">{(node.sorries && node.sorries.length) || 0} open sorry placeholders</span>
-            </div>
-          </div>
-        {:else}
-          <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">
-            No Lean source linked.<br />Run the agent to scaffold a theorem stub.
-          </div>
-        {/if}
-
       {:else if tab === 'attempts'}
         {#if !node.attemptsLog || node.attemptsLog.length === 0}
           <div style="color: var(--fg-3); text-align: center; padding: 40px; font-size: 12px;">No attempts logged yet.</div>
@@ -284,7 +375,7 @@ theorem {node.lean_theorem} ...{/if}</pre>
             {#each [...node.attemptsLog].reverse() as a (a.id)}
               <div class="attempt">
                 <div class="attempt-head">
-                  <StatusPill status={a.result === 'PARTIAL' ? 'SORRIES' : a.result === 'PROGRESS' ? 'PROGRESS' : a.result} />
+                  <StatusPill status={a.result === 'PARTIAL' ? 'SORRIES' : a.result === 'PROGRESS' ? 'IN_PROGRESS' : a.result === 'FAILED' ? 'STUCK' : a.result} />
                   <span class="agent">{a.agent}</span>
                   <span class="time">{a.duration} · {a.started.slice(11)}</span>
                 </div>
@@ -334,6 +425,3 @@ theorem {node.lean_theorem} ...{/if}</pre>
   {/if}
 </div>
 
-<style>
-  .dep-row, .detail-tab, .close { all: unset; cursor: pointer; }
-</style>

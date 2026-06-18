@@ -20,7 +20,7 @@
     tokens: number;
     cost: number;
     strategy: string;
-    result: AttemptResult | 'PROGRESS';
+    result: AttemptResult | 'IN_PROGRESS' | 'STUCK';
     why?: string;
     isLive?: boolean;
     logPath?: string;
@@ -43,7 +43,7 @@
       tokens: 0,
       cost: 0,
       strategy: r.route_reason,
-      result: r.status === 'running' ? 'PROGRESS' : (r.result ?? (r.status === 'ok' ? 'PROVEN' : 'FAILED')),
+      result: r.status === 'running' ? 'IN_PROGRESS' : (r.result ?? (r.status === 'ok' ? 'PROVEN' : 'STUCK')),
       why: r.message ?? undefined,
       isLive: r.status === 'running' || r.status === 'pending',
       logPath: r.log_path,
@@ -89,7 +89,7 @@
           tokens: 0,
           cost: 0,
           strategy: 'dispatch in progress',
-          result: 'PROGRESS',
+          result: 'IN_PROGRESS',
           isLive: true,
         });
       } else {
@@ -132,7 +132,7 @@
       : parseLogText(app.liveLogText || '', run?.started),
   );
 
-  let logEl: HTMLDivElement;
+  let logEl = $state<HTMLDivElement>();
 
   $effect(() => {
     if (!run || run.isLive || !run.logPath || !app.projectRoot) return;

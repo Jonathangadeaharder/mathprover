@@ -22,11 +22,11 @@
     return () => document.removeEventListener('mousedown', onClick);
   });
 
-  let label = $derived(status === 'FAILED' || status === 'SORRIES' ? 'Retry with agent' : 'Run agent');
+  let label = $derived(status === 'STUCK' || status === 'SORRIES' ? 'Retry with agent' : 'Run agent');
   let modelObj = $derived(DISPATCH_MODELS.find((m) => m.id === model) ?? DISPATCH_MODELS[0]);
 </script>
 
-<div bind:this={ref} style="position: relative; display: inline-flex;">
+<div bind:this={ref} class="split-btn-wrap">
   <div class="split-btn" style:opacity={disabled ? 0.5 : 1} style:pointer-events={disabled ? 'none' : 'auto'}>
     <button onclick={() => onrun(model)}>
       <Icon name="play" size={11} />

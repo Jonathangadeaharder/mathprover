@@ -12,7 +12,7 @@
     return NODES
       .filter((n) => {
         const sk = statusKey(n.status);
-        return sk === 'READY' || sk === 'SORRIES' || sk === 'FAILED' || sk === 'UNEXPLORED';
+        return sk === 'READY' || sk === 'SORRIES' || sk === 'STUCK' || sk === 'UNEXPLORED' || sk === 'DRAFT';
       })
       .map((n) => {
         const deps = (n.depends_on || []).map((d) => NODE_BY_ID[d]).filter(Boolean);

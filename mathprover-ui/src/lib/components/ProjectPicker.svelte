@@ -1,20 +1,32 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
-  import { app } from '$lib/stores.svelte';
+  import { app, project } from '$lib/stores.svelte';
   import { RECENT_PROJECTS } from '$lib/data';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
 
-  let dragOver = $state(false);
+  let autoDetected = $state(false);
+
+  onMount(async () => {
+    try {
+      const res = await fetch('/api/project');
+      if (res.ok) {
+        const { data, projectRoot, error } = await res.json();
+        if (data && projectRoot && !error) {
+          autoDetected = true;
+        }
+      }
+    } catch { /* ignore */ }
+  });
 
   function open(path?: string) {
+    app.openedProject = true;
     if (path) {
       goto(`/workspace?project=${encodeURIComponent(path)}`);
-      app.openedProject = true;
-      app.route = 'graph';
     } else {
-      app.openedProject = true;
-      app.route = 'graph';
+      goto('/workspace');
     }
+    app.route = 'graph';
   }
 </script>
 
@@ -29,16 +41,11 @@
     <button
       type="button"
       class="dropzone"
-      style:border-color={dragOver ? 'var(--accent)' : null}
-      style:background={dragOver ? 'var(--accent-soft)' : null}
-      ondragover={(e) => { e.preventDefault(); dragOver = true; }}
-      ondragleave={() => (dragOver = false)}
-      ondrop={(e) => { e.preventDefault(); dragOver = false; open(); }}
       onclick={() => open()}
     >
       <Icon name="folder" size={32} />
-      <div class="ttl">Drop a project folder here, or click to browse</div>
-      <div class="sub">Expects <span class="kbd">paper/</span>, <span class="kbd">lean/</span> and a <span class="kbd">mathprover.toml</span> manifest at the root</div>
+      <div class="ttl">{autoDetected ? 'Project detected — click to open' : 'Click to browse'}</div>
+      <div class="sub">Expects <span class="kbd">lakefile.lean</span> and a <span class="kbd">.mathprover/</span> directory at the root</div>
     </button>
 
     <div class="recent-list">
@@ -85,7 +92,7 @@
     <div style="display: flex; justify-content: flex-end; margin-top: 24px; gap: 8px;">
       <button class="btn ghost">Documentation</button>
       <button class="btn primary" onclick={() => open()}>
-        Open sample project
+        {autoDetected ? 'Open detected project' : 'Open project'}
         <Icon name="arrow_right" size={12} />
       </button>
     </div>

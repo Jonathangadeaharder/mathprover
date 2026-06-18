@@ -4,14 +4,12 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
-  // If we already have a project loaded (e.g. via store rehydration), bounce to /workspace.
   onMount(() => {
-    if (app.openedProject) goto('/workspace');
+    if (app.projectRoot) goto('/workspace');
   });
 
-  // Watch in case the picker sets a project — redirect to /workspace.
   $effect(() => {
-    if (app.openedProject) goto('/workspace');
+    if (app.projectRoot) goto('/workspace');
   });
 </script>
 
