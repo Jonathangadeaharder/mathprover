@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -64,6 +66,40 @@ SOLVE_RESERVE = 32000
 CONTEXT_MODEL = NAMES["gemma"]
 PLANNER_MODEL = NAMES["qwen"]
 PROVER_MODEL = NAMES["oprover"]
+
+
+def ensure_mtplx() -> None:
+    """If qwen is configured for MTPLX, verify the daemon is reachable; start it if not."""
+    qwen_url = ROLE_BASE_URLS.get("qwen", "")
+    if "8000" not in qwen_url:
+        return
+    try:
+        _oai_qwen = openai.OpenAI(base_url=qwen_url, api_key=ROLE_API_KEYS.get("qwen", "mtplx"))
+        _oai_qwen.models.list()
+        LOG.info("MTPLX daemon already running at %s", qwen_url)
+        return
+    except Exception:
+        pass
+    mtplx = shutil.which("mtplx")
+    if not mtplx:
+        LOG.warning("mtplx CLI not found on PATH; qwen calls will fail until MTPLX is started manually")
+        return
+    LOG.info("Starting MTPLX daemon via `mtplx quickstart --port 8000` …")
+    proc = subprocess.Popen(
+        [mtplx, "quickstart", "--port", "8000"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    deadline = time.time() + 120
+    while time.time() < deadline:
+        time.sleep(3)
+        try:
+            _oai_qwen = openai.OpenAI(base_url=qwen_url, api_key=ROLE_API_KEYS.get("qwen", "mtplx"))
+            _oai_qwen.models.list()
+            LOG.info("MTPLX daemon ready at %s (pid %d)", qwen_url, proc.pid)
+            return
+        except Exception:
+            continue
+    LOG.warning("MTPLX daemon not ready after 120s (pid %d); proceeding anyway", proc.pid)
 
 _providers: dict[tuple[str, str], OpenAIProvider] = {}
 _clients: dict[tuple[str, str], openai.OpenAI] = {}

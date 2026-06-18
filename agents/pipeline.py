@@ -66,6 +66,7 @@ import models as M  # noqa: E402
 import pai_agents  # noqa: E402
 import residency  # noqa: E402  (turn-based single-model residency guard; cached no-op in-phase)
 import schemas  # noqa: E402
+import trajectory  # noqa: E402  (structured JSONL proving-step recorder)
 
 ROLE_PROVER = M.NAMES["oprover"]
 ROLE_FORMALIZER = ROLE_PROVER
@@ -465,12 +466,18 @@ def prove_leaf(goal_src: str, project_root: Path, sketch: str, premises: list[st
     k = max(1, width)
     branches = [(None, None)] * k
     rnd = 0
+    # Session id for trajectory recording (use pipeline run id or generate one)
+    _traj_run_id = _PROG.get("task", "") or datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+    _traj_node = _PROG.get("task", "")
+    trajectory.begin_session(run_id=_traj_run_id, node_id=_traj_node,
+                             prover="oprover", project_root=project_root)
     while True:
         rnd += 1
         if deadline is not None:
             if time.time() > deadline:
                 LOG.info("  prove_leaf: wall-clock deadline reached at round %d, UNPROVED", rnd - 1)
                 prog(project_root, f"deadline reached after {rnd - 1} rounds — UNPROVED", status="unproved")
+                trajectory.end_session()
                 return None
             budget_label = f"round {rnd} (until deadline)"
         else:
@@ -483,19 +490,39 @@ def prove_leaf(goal_src: str, project_root: Path, sketch: str, premises: list[st
                      rnd, i, ROLE_PROVER, GEN_PER_ROUND, REFINE_TEMP)
             prog(project_root, f"Proving — {budget_label}, branch {i} (oprover-8b)", round=rnd)
             content = (prompt_override(prev, fb) if prompt_override
-                       else _build_refine_prompt(goal_src, refs, defs, hints, prev, fb))
+                        else _build_refine_prompt(goal_src, refs, defs, hints, prev, fb))
+            t0_call = time.time()
+            prompt_msgs = [{"role": "system", "content": sys_msg},
+                           {"role": "user", "content": content}]
             try:
-                out = chat(ROLE_PROVER,
-                           [{"role": "system", "content": sys_msg},
-                            {"role": "user", "content": content}],
+                out = chat(ROLE_PROVER, prompt_msgs,
                            max_tokens=GEN_PER_ROUND, temperature=REFINE_TEMP)
             except Exception as e:  # noqa: BLE001 — one bad API response must not kill the whole run
                 LOG.warning("  prove_leaf r%d b%d: chat failed (%s) -> keep prior state, continue", rnd, i, e)
+                trajectory.record_proving_step(
+                    run_id=_traj_run_id, node_id=_traj_node, prover="oprover",
+                    round=rnd, branch=i, phase="generate", gate="chat_error",
+                    prompt={"messages": [{"role": m["role"], "content": m["content"][:500]}
+                                          for m in prompt_msgs]},
+                    latency_s=round(time.time() - t0_call, 3),
+                    temperature=REFINE_TEMP, max_tokens=GEN_PER_ROUND,
+                    metadata={"error": str(e)[:200]},
+                    project_root=project_root,
+                )
                 next_branches.append((prev, fb))
                 continue
             cand = apply_generated_proof(goal_src, out)
             if not cand:
                 LOG.info("  prove_leaf r%d b%d: no lean block extracted -> retry", rnd, i)
+                trajectory.record_proving_step(
+                    run_id=_traj_run_id, node_id=_traj_node, prover="oprover",
+                    round=rnd, branch=i, phase="generate", gate="no_block",
+                    prompt={"messages": [{"role": m["role"], "content": m["content"][:500]}
+                                          for m in prompt_msgs]},
+                    model_output=out[:4000], latency_s=round(time.time() - t0_call, 3),
+                    temperature=REFINE_TEMP, max_tokens=GEN_PER_ROUND,
+                    project_root=project_root,
+                )
                 next_branches.append((None, None))
                 continue
             for imp in _imports_of(goal_src).splitlines():  # premise injection: re-prepend dropped imports/opens
@@ -505,12 +532,33 @@ def prove_leaf(goal_src: str, project_root: Path, sketch: str, premises: list[st
                 LOG.info("  prove_leaf r%d b%d: REJECTED — statement changed (soundness guard)", rnd, i)
                 LOG.debug("    expected sig: %r", _goal_signature(goal_src))
                 LOG.debug("    cand sig    : %r", _goal_signature(cand))
+                trajectory.record_proving_step(
+                    run_id=_traj_run_id, node_id=_traj_node, prover="oprover",
+                    round=rnd, branch=i, phase="gate", gate="statement_changed",
+                    prompt={"messages": [{"role": m["role"], "content": m["content"][:500]}
+                                          for m in prompt_msgs]},
+                    model_output=out[:4000], candidate=cand[:4000],
+                    latency_s=round(time.time() - t0_call, 3),
+                    temperature=REFINE_TEMP, max_tokens=GEN_PER_ROUND,
+                    project_root=project_root,
+                )
                 next_branches.append((cand, ("You changed the theorem statement. You MUST prove EXACTLY this "
-                                             f"statement, verbatim:\n{_goal_signature(goal_src)}")))
+                                              f"statement, verbatim:\n{_goal_signature(goal_src)}")))
                 continue
             forbidden = forbidden_placeholders(cand)
             if forbidden:
                 LOG.info("  prove_leaf r%d b%d: candidate still has placeholders %s -> refine", rnd, i, forbidden)
+                trajectory.record_proving_step(
+                    run_id=_traj_run_id, node_id=_traj_node, prover="oprover",
+                    round=rnd, branch=i, phase="gate", gate="forbidden_placeholder",
+                    prompt={"messages": [{"role": m["role"], "content": m["content"][:500]}
+                                          for m in prompt_msgs]},
+                    model_output=out[:4000], candidate=cand[:4000],
+                    latency_s=round(time.time() - t0_call, 3),
+                    temperature=REFINE_TEMP, max_tokens=GEN_PER_ROUND,
+                    metadata={"forbidden": forbidden},
+                    project_root=project_root,
+                )
                 next_branches.append((cand, "Your proof still contains a forbidden placeholder (`sorry`, `admit`, `exact?`, `sorryAx`, or `axiom`). Provide a complete proof."))
                 continue
             r = compile_lean_file(project_root=project_root, lean_file=_scratch(project_root, cand))
@@ -524,15 +572,41 @@ def prove_leaf(goal_src: str, project_root: Path, sketch: str, premises: list[st
                          rnd, i, out_f)
                 prog(project_root, f"VERIFIED at round {rnd} (lake-clean, sorry-free) — PROVED",
                      status="proved", result="PROVED")
+                trajectory.record_proving_step(
+                    run_id=_traj_run_id, node_id=_traj_node, prover="oprover",
+                    round=rnd, branch=i, phase="compile", gate="compile_ok",
+                    prompt={"messages": [{"role": m["role"], "content": m["content"][:500]}
+                                          for m in prompt_msgs]},
+                    model_output=out[:4000], candidate=cand[:4000],
+                    compile_ok=True, compile_feedback=r.combined[:4000],
+                    latency_s=round(time.time() - t0_call, 3),
+                    temperature=REFINE_TEMP, max_tokens=GEN_PER_ROUND,
+                    metadata={"proof_path": str(out_f)},
+                    project_root=project_root,
+                )
+                trajectory.end_session()
                 return cand
             new_fb = ANSI_RE.sub("", r.error_excerpt(4000))
             first = (new_fb.splitlines() or [""])[0][:140]
             LOG.info("  prove_leaf r%d b%d: compile FAIL -> refine :: %s", rnd, i, first)
             prog(project_root, f"compile FAIL (r{rnd} b{i}): {first}")
+            trajectory.record_proving_step(
+                run_id=_traj_run_id, node_id=_traj_node, prover="oprover",
+                round=rnd, branch=i, phase="compile", gate="compile_fail",
+                prompt={"messages": [{"role": m["role"], "content": m["content"][:500]}
+                                      for m in prompt_msgs]},
+                model_output=out[:4000], candidate=cand[:4000],
+                compile_ok=False, compile_feedback=new_fb,
+                latency_s=round(time.time() - t0_call, 3),
+                temperature=REFINE_TEMP, max_tokens=GEN_PER_ROUND,
+                metadata={"feedback_head": first},
+                project_root=project_root,
+            )
             next_branches.append((cand, new_fb))
         branches = next_branches
     LOG.info("  prove_leaf: exhausted %d refinement rounds on %d branches, UNPROVED", total_rounds, k)
     prog(project_root, f"exhausted {total_rounds} rounds — UNPROVED", status="unproved")
+    trajectory.end_session()
     return None
 
 

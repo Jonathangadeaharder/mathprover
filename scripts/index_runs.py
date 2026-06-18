@@ -20,6 +20,7 @@ if str(AGENTS) not in sys.path:
 
 from run_registry import (  # noqa: E402
     RunRecord,
+    is_stale_run,
     list_runs,
     read_run,
     resolve_node_id,
@@ -182,7 +183,7 @@ def merge_attempts_into_graph(project_root: Path, graph: dict) -> dict:
             node["attempts"] = len(attempts)
         attach_proof_folders(project_root, [node])
 
-    active = next((r for r in runs if r.status in {"pending", "running"}), None)
+    active = next((r for r in runs if r.status in {"pending", "running"} and not is_stale_run(r)), None)
     if active:
         graph["activeAgent"] = {
             "node": active.node_id,
@@ -193,8 +194,8 @@ def merge_attempts_into_graph(project_root: Path, graph: dict) -> dict:
             "runId": active.id,
             "log": [],
         }
-    elif graph.get("activeAgent") and not active:
-        pass  # keep existing unless stale — cleared by dispatch end
+    else:
+        graph["activeAgent"] = None
 
     return graph
 

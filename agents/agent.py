@@ -194,6 +194,7 @@ def run(node: str, project_root: Path, *, max_hours: float, max_steps: int, allo
     P.init_progress(project_root, task=f"agent:{node}", mode="phase-batched",
                     budget=(f"{max_hours}h" if deadline else f"{max_steps} iters"))
     P.LOG.info("=== phase-batched agent node=%s iters<=%d deadline=%s ===", node, max_steps, bool(deadline))
+    M.ensure_mtplx()
     residency.free()  # clean slate: no model resident
 
     # CONTEXT (gemma), once — PydanticAI context agent.

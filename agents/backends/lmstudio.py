@@ -18,6 +18,7 @@ sys.path.insert(0, str(AGENTS))
 import models as M  # noqa: E402
 from config import ProverConfig  # noqa: E402
 from lean_pipeline import apply_generated_proof, compile_lean_file, forbidden_placeholders  # noqa: E402
+import trajectory  # noqa: E402
 
 
 @dataclass
@@ -71,6 +72,9 @@ def run_lmstudio(
 
     with log_path.open("w", encoding="utf-8") as log:
         log.write(f"# {config.name} @ {base_url} model={model}\n\n")
+        # Derive node_id and run_id from the attempt path for trajectory recording
+        _traj_node = attempt_file.parent.name
+        _traj_run = log_path.stem
         for sample in range(1, config.max_attempts + 1):
             messages = [
                 {"role": "system", "content": _SYSTEM},
@@ -84,10 +88,27 @@ def run_lmstudio(
                                 max_tokens=tok, timeout_s=timeout_s)
                 except Exception as exc:  # noqa: BLE001 — log + try next sample
                     log.write(f"[chat error] {exc}\n\n")
+                    trajectory.record_proving_step(
+                        run_id=_traj_run, node_id=_traj_node, prover=config.name,
+                        round=rnd, branch=sample - 1, phase="generate", gate="chat_error",
+                        prompt={"messages_count": len(messages)},
+                        metadata={"sample": sample, "error": str(exc)[:200]},
+                        temperature=config.temperature, max_tokens=tok,
+                        project_root=project_root,
+                    )
                     break
                 candidate = apply_generated_proof(original, out)
                 if candidate is None:
                     log.write("[no lean block extracted]\n\n")
+                    trajectory.record_proving_step(
+                        run_id=_traj_run, node_id=_traj_node, prover=config.name,
+                        round=rnd, branch=sample - 1, phase="generate", gate="no_block",
+                        prompt={"messages_count": len(messages)},
+                        model_output=out[:4000],
+                        metadata={"sample": sample},
+                        temperature=config.temperature, max_tokens=tok,
+                        project_root=project_root,
+                    )
                     messages += [
                         {"role": "assistant", "content": out},
                         {"role": "user", "content": "No ```lean block found. Output the full file in one ```lean block."},
@@ -96,6 +117,15 @@ def run_lmstudio(
                 forbidden = forbidden_placeholders(candidate)
                 if forbidden:
                     log.write(f"[candidate still contains forbidden placeholders {forbidden} — rejected]\n\n")
+                    trajectory.record_proving_step(
+                        run_id=_traj_run, node_id=_traj_node, prover=config.name,
+                        round=rnd, branch=sample - 1, phase="gate", gate="forbidden_placeholder",
+                        prompt={"messages_count": len(messages)},
+                        model_output=out[:4000], candidate=candidate[:4000],
+                        metadata={"sample": sample, "forbidden": forbidden},
+                        temperature=config.temperature, max_tokens=tok,
+                        project_root=project_root,
+                    )
                     messages += [
                         {"role": "assistant", "content": out},
                         {"role": "user", "content": "Your proof still contains placeholders (`sorry`, `admit`, `exact?`, `sorryAx`, or `axiom`). Provide a complete proof with none."},
@@ -106,11 +136,31 @@ def run_lmstudio(
                 if result.ok and not forbidden_placeholders(candidate):
                     attempt_file.write_text(candidate, encoding="utf-8")
                     log.write(f"[VERIFIED] sample {sample} round {rnd}: lake-clean, placeholder-free\n")
+                    trajectory.record_proving_step(
+                        run_id=_traj_run, node_id=_traj_node, prover=config.name,
+                        round=rnd, branch=sample - 1, phase="compile", gate="compile_ok",
+                        prompt={"messages_count": len(messages)},
+                        model_output=out[:4000], candidate=candidate[:4000],
+                        compile_ok=True, compile_feedback=result.combined[:4000],
+                        metadata={"sample": sample},
+                        temperature=config.temperature, max_tokens=tok,
+                        project_root=project_root,
+                    )
                     succeeded = True
                     final_msg = f"{config.name}: verified (sample={sample}, round={rnd})"
                     break
                 err = result.error_excerpt(2000)
                 log.write(f"[lean error]\n{err}\n\n")
+                trajectory.record_proving_step(
+                    run_id=_traj_run, node_id=_traj_node, prover=config.name,
+                    round=rnd, branch=sample - 1, phase="compile", gate="compile_fail",
+                    prompt={"messages_count": len(messages)},
+                    model_output=out[:4000], candidate=candidate[:4000],
+                    compile_ok=False, compile_feedback=err,
+                    metadata={"sample": sample},
+                    temperature=config.temperature, max_tokens=tok,
+                    project_root=project_root,
+                )
                 messages += [
                     {"role": "assistant", "content": out},
                     {"role": "user", "content": f"That proof failed to compile. Lean reported:\n```\n{err}\n```\nFix it and output the full file in one ```lean block."},
