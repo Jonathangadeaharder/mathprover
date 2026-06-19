@@ -80,6 +80,18 @@ export async function reindexProject(
   return body.data as ProjectData | null;
 }
 
+export async function syncProject(projectRoot: string): Promise<{
+  ok: boolean;
+  synced: boolean;
+  build: string;
+  data: ProjectData | null;
+  error: string | null;
+} | null> {
+  const res = await fetch(`/api/sync${qs(projectRoot)}`, { method: "POST" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export function subscribeRunStream(
   projectRoot: string,
   runId: string,

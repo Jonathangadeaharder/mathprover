@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import { app, project } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, FAILURES, FOUNDATIONS, DEFINITIONS } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, FAILURES, FOUNDATIONS, DEFINITIONS, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { Route, NodeStatus } from '$lib/types';
 
@@ -18,20 +18,34 @@
 
   let stats = $derived.by(() => {
     let frontier = 0;
-    NODES.forEach((n) => {
+    ACTIVE_NODES.forEach((n) => {
       const sk = statusKey(n.status);
       if (sk === 'READY' || sk === 'SORRIES' || sk === 'STUCK') {
         const deps = (n.depends_on || []).map((d) => NODE_BY_ID[d]).filter(Boolean);
         if (deps.length === 0 || deps.every((d) => statusKey(d.status) === 'PROVEN')) frontier++;
       }
     });
-    return { graph: NODES.length, frontier, agents: project.data.activeAgent ? 1 : 0, failures: FAILURES.length };
+    return { graph: ACTIVE_NODES.length, frontier, agents: project.data.activeAgent ? 1 : 0, failures: FAILURES.length };
   });
 
   let counts = $derived.by(() => {
     const c: Record<NodeStatus, number> = { PROVEN: 0, DISPROVEN: 0, SORRIES: 0, IN_PROGRESS: 0, STUCK: 0, DRAFT: 0, REJECTED: 0, READY: 0, BLOCKED: 0, UNEXPLORED: 0 };
-    NODES.forEach((n) => { c[statusKey(n.status)]++; });
+    ACTIVE_NODES.forEach((n) => { c[statusKey(n.status)]++; });
     return c;
+  });
+
+  let workstreamCounts = $derived.by(() => {
+    const counts = { paper: 0, shared: 0, foundation: 0, unscoped: 0 };
+    for (const node of ACTIVE_NODES) {
+      const scope = primaryFoundationForNode(node.id);
+      if (!scope) {
+        counts.unscoped += 1;
+        continue;
+      }
+      const kind = scope.kind ?? 'foundation';
+      counts[kind as keyof typeof counts] += 1;
+    }
+    return counts;
   });
 
   const statusOrder: [NodeStatus, string][] = [
@@ -84,6 +98,30 @@
       </div>
     {/if}
   {/each}
+
+  <div class="section-label">Workstreams</div>
+  <div class="status-row">
+    <span class="status-dot" style="background: var(--st-proven);"></span>
+    <span class="status-label">paper-facing</span>
+    <span class="status-count">{workstreamCounts.paper}</span>
+  </div>
+  <div class="status-row">
+    <span class="status-dot" style="background: var(--st-sorries);"></span>
+    <span class="status-label">shared</span>
+    <span class="status-count">{workstreamCounts.shared}</span>
+  </div>
+  <div class="status-row">
+    <span class="status-dot" style="background: var(--fg-3);"></span>
+    <span class="status-label">foundation</span>
+    <span class="status-count">{workstreamCounts.foundation}</span>
+  </div>
+  {#if workstreamCounts.unscoped > 0}
+    <div class="status-row">
+      <span class="status-dot" style="background: var(--fg-4);"></span>
+      <span class="status-label">unscoped</span>
+      <span class="status-count">{workstreamCounts.unscoped}</span>
+    </div>
+  {/if}
 
   <div class="sidebar-footer">
     <div class="sidebar-footer-row">

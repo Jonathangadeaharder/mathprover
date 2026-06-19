@@ -6,6 +6,7 @@ import type {
   Definition,
   Failure,
   Foundation,
+  FoundationKind,
   LeanBlock,
   LiveAgent,
   PaperBlock,
@@ -59,7 +60,16 @@ function recordProxy<V>(getter: () => Record<string, V>): Record<string, V> {
   });
 }
 
+export function isArchivedNode(node: TheoremNode): boolean {
+  return Boolean(
+    node.archived || ["merged", "superseded"].includes(node.worker_state || ""),
+  );
+}
+
 export const NODES: TheoremNode[] = arrayProxy(() => d().nodes);
+export const ACTIVE_NODES: TheoremNode[] = arrayProxy(() =>
+  d().nodes.filter((n) => !isArchivedNode(n)),
+);
 export const DEFINITIONS: Definition[] = arrayProxy(() => d().definitions);
 export const FOUNDATIONS: Foundation[] = arrayProxy(() => d().foundations);
 export const FAILURES: Failure[] = arrayProxy(() => d().failures);
@@ -84,6 +94,47 @@ export const DEF_USED_BY: Record<string, string[]> = recordProxy(() => {
   }
   return m;
 });
+
+export const FOUNDATION_BY_NODE_ID: Record<string, Foundation[]> = recordProxy(
+  () => {
+    const out: Record<string, Foundation[]> = {};
+    for (const node of d().nodes) out[node.id] = [];
+    for (const foundation of d().foundations) {
+      for (const nodeId of foundation.used_in || []) {
+        if (!out[nodeId]) out[nodeId] = [];
+        out[nodeId].push(foundation);
+      }
+    }
+    return out;
+  },
+);
+
+const KIND_RANK: Record<FoundationKind, number> = {
+  paper: 0,
+  shared: 1,
+  foundation: 2,
+};
+
+function foundationRank(foundation: Foundation): number {
+  return (
+    KIND_RANK[foundation.kind ?? "foundation"] * 100 -
+    (foundation.priority ?? 0)
+  );
+}
+
+export function foundationsForNode(nodeId: string): Foundation[] {
+  const items = FOUNDATION_BY_NODE_ID[nodeId] || [];
+  return [...items].sort((a, b) => {
+    const ra = foundationRank(a);
+    const rb = foundationRank(b);
+    if (ra !== rb) return ra - rb;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export function primaryFoundationForNode(nodeId: string): Foundation | null {
+  return foundationsForNode(nodeId)[0] ?? null;
+}
 
 export const CHILDREN_BY_ID: Record<string, string[]> = recordProxy(() => {
   const c: Record<string, string[]> = {};

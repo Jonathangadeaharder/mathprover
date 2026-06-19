@@ -1,4 +1,4 @@
-import { enrichGraph, resolveProjectRoot } from "$lib/server/project";
+import { resolveProjectRoot, syncProject } from "$lib/server/project";
 import { resolve } from "node:path";
 import type { LayoutServerLoad } from "./$types";
 import { EMPTY_PROJECT_DATA } from "$lib/data-empty";
@@ -18,11 +18,11 @@ export const load: LayoutServerLoad = async ({ url }) => {
   const graphFile = resolve(root, ".mathprover/graph.json");
 
   try {
-    const data = await enrichGraph(root);
+    const synced = await syncProject(root);
     return {
-      projectData: data,
+      projectData: synced.data ?? EMPTY_PROJECT_DATA,
       projectRoot: root,
-      error: null as string | null,
+      error: synced.error,
     };
   } catch (err) {
     return {

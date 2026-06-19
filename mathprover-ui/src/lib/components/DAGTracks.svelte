@@ -2,11 +2,12 @@
   import Icon from './Icon.svelte';
   import StatusPill from './StatusPill.svelte';
   import { app } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, activeAgent } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, activeAgent, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { TheoremNode } from '$lib/types';
 
   type Lane = {
+    key: string;
     depth: number;
     title: string;
     subtitle: string;
@@ -16,13 +17,16 @@
   };
 
   const statusRank: Record<string, number> = {
-    PROGRESS: 0,
+    PROVEN: 0,
     READY: 1,
-    SORRIES: 2,
-    FAILED: 3,
+    IN_PROGRESS: 2,
+    SORRIES: 3,
     BLOCKED: 4,
-    UNEXPLORED: 5,
-    PROVEN: 6,
+    STUCK: 5,
+    DRAFT: 6,
+    REJECTED: 7,
+    DISPROVEN: 8,
+    UNEXPLORED: 9,
   };
 
   function depthOf(node: TheoremNode, memo: Record<string, number>, seen = new Set<string>()): number {
@@ -35,17 +39,40 @@
     return depth;
   }
 
+  function scopeOf(node: TheoremNode): string {
+    const scope = primaryFoundationForNode(node.id);
+    if (!scope) return 'unscoped';
+    return `${scope.kind ?? 'foundation'}::${scope.name}`;
+  }
+
+  function scopeTitle(key: string): string {
+    if (key === 'unscoped') return 'Unscoped work';
+    const [, name] = key.split('::');
+    return name || 'Unscoped work';
+  }
+
+  function scopeSubtitle(key: string): string {
+    if (key === 'unscoped') return 'nodes without a top-level workstream tag';
+    const [kind] = key.split('::');
+    if (kind === 'paper') return 'paper-facing work';
+    if (kind === 'shared') return 'shared between paper and foundation';
+    return 'foundational work';
+  }
+
   let lanes = $derived.by(() => {
     const memo: Record<string, number> = {};
-    const groups: Record<number, TheoremNode[]> = {};
-    for (const node of NODES) {
+    const groups: Record<string, TheoremNode[]> = {};
+    for (const node of ACTIVE_NODES) {
       const depth = depthOf(node, memo);
-      groups[depth] ||= [];
-      groups[depth].push(node);
+      const scope = scopeOf(node);
+      const key = `${depth}::${scope}`;
+      groups[key] ||= [];
+      groups[key].push(node);
     }
 
     return Object.entries(groups)
-      .map(([depthRaw, nodes]) => {
+      .map(([key, nodes]) => {
+        const [depthRaw, scopeKey] = key.split('::', 2);
         const depth = Number(depthRaw);
         const sorted = [...nodes].sort((a, b) => {
           const sa = statusRank[statusKey(a.status)] ?? 9;
@@ -56,15 +83,23 @@
         });
         const proven = sorted.filter((n) => statusKey(n.status) === 'PROVEN').length;
         return {
+          key,
           depth,
-          title: depth === 0 ? 'Leaves' : depth === 1 ? 'Assembly' : `Depth ${depth}`,
-          subtitle: depth === 0 ? 'independent proof obligations' : 'nodes waiting on earlier lanes',
+          title: depth === 0
+            ? `Leaves (${scopeTitle(scopeKey)})`
+            : depth === 1
+            ? `Assembly (${scopeTitle(scopeKey)})`
+            : `Depth ${depth} (${scopeTitle(scopeKey)})`,
+          subtitle: `${scopeSubtitle(scopeKey)} · depth ${depth}`,
           nodes: sorted,
           proven,
           open: sorted.length - proven,
         };
       })
-      .sort((a, b) => a.depth - b.depth);
+      .sort((a, b) => {
+        if (a.depth !== b.depth) return a.depth - b.depth;
+        return a.title.localeCompare(b.title);
+      });
   });
 
   let active = $derived(activeAgent());
@@ -89,13 +124,13 @@
 
 <div class="tracks-shell">
   <div class="tracks-timeline" aria-hidden="true">
-    {#each lanes as lane (lane.depth)}
+    {#each lanes as lane (lane.key)}
       <span>{lane.depth}</span>
     {/each}
   </div>
 
   <div class="tracks-board">
-    {#each lanes as lane (lane.depth)}
+    {#each lanes as lane (lane.key)}
       <section class="track-lane" aria-label={lane.title}>
         <div class="track-head">
           <div>

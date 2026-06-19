@@ -11,6 +11,12 @@
     PLANNED:    { label: 'Planned',     color: '#94a3b8', desc: 'Decomposition outlined; no Lean work yet.' },
   };
 
+  const KIND_META: Record<string, { label: string; bg: string; fg: string }> = {
+    paper: { label: 'paper', bg: 'var(--st-proven-bg)', fg: 'var(--st-proven)' },
+    shared: { label: 'shared', bg: 'var(--st-sorries-bg)', fg: 'var(--st-sorries)' },
+    foundation: { label: 'foundation', bg: 'var(--bg-3)', fg: 'var(--fg-3)' },
+  };
+
   const SUBSTATUS: Record<string, { color: string; label: string }> = {
     done:        { color: '#34d399', label: 'done' },
     in_progress: { color: '#60a5fa', label: 'in progress' },
@@ -29,16 +35,39 @@
     const partial = f.subgoals.filter((s) => s.status === 'in_progress').length;
     return Math.round(100 * (done + 0.5 * partial) / f.subgoals.length);
   }
+
+  function kindMeta(kind?: string) {
+    return KIND_META[kind || 'foundation'] ?? KIND_META.foundation;
+  }
+
+  function branchLabel(f: Foundation): string | null {
+    if (!f.used_in || f.used_in.length === 0) return null;
+    const ids = f.used_in.filter((id) => NODE_BY_ID[id]);
+    if (ids.length === 0) return null;
+    const prefixes = new Set(ids.map((id) => NODE_BY_ID[id].paper_id.split('_')[0]));
+    if (prefixes.size !== 1) return null;
+    const [prefix] = [...prefixes];
+    return prefix || null;
+  }
+
+  function usedNodes(f: Foundation) {
+    return [...(f.used_in || [])]
+      .map((nid) => NODE_BY_ID[nid])
+      .filter(Boolean)
+      .sort((a, b) => a.paper_id.localeCompare(b.paper_id));
+  }
 </script>
 
 <div class="found-grid">
   {#each FOUNDATIONS as f (f.id)}
     {@const meta = STATUS_META[f.status] ?? STATUS_META.PLANNED}
     {@const pct = computedPct(f)}
+    {@const km = kindMeta(f.kind)}
     <article class="found-card">
       <header>
         <div class="title-row">
           <h2>{f.name}</h2>
+          <span class="kind-pill" style:background={km.bg} style:color={km.fg}>{km.label}</span>
           <span class="status-pill" style="background: {meta.color}1f; color: {meta.color}; border: 1px solid {meta.color}40;">{meta.label}</span>
         </div>
         <div class="citation">
@@ -50,7 +79,7 @@
         </div>
       </header>
 
-      <p class="desc">{f.description}</p>
+      <p class="desc">{f.summary || f.description}</p>
 
       <div class="progress">
         <div class="progress-bar">
@@ -88,14 +117,19 @@
 
       {#if f.used_in.length > 0}
         <div class="used-in">
-          <span class="used-in-label">Used in:</span>
-          {#each f.used_in as nid (nid)}
-            {@const node = NODE_BY_ID[nid]}
-            {#if node}
-              <button class="used-link" onclick={() => gotoNode(nid)}>{node.paper_id} · {node.paper_name}</button>
-            {:else}
-              <span class="used-link missing">{nid}</span>
-            {/if}
+          <span class="used-in-label">Children:</span>
+          {#if branchLabel(f)}
+            <span class="kind-pill" style:background="var(--st-proven-bg)" style:color="var(--st-proven)">
+              {f.name} → {branchLabel(f)}
+            </span>
+          {/if}
+        </div>
+        <div class="used-in used-node-grid">
+          {#each usedNodes(f) as node (node.id)}
+            <button class="used-link used-node-card" onclick={() => gotoNode(node.id)}>
+              <span class="used-node-id">{node.paper_id}</span>
+              <span class="used-node-name">{node.paper_name}</span>
+            </button>
           {/each}
         </div>
       {/if}
@@ -184,12 +218,22 @@
   .sg-status { font-size: 10.5px; font-weight: 500; }
   .used-in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; }
   .used-in-label { color: var(--fg-3); }
+  .used-node-grid { margin-top: 6px; }
   .used-link {
     background: var(--bg-3); border: 1px solid var(--border-1); border-radius: 4px;
     padding: 3px 7px; cursor: pointer; color: var(--fg-2); font-size: 11px;
   }
   .used-link:hover { color: var(--fg-1); border-color: var(--border-2); }
-  .used-link.missing { opacity: 0.5; cursor: default; }
+  .used-node-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 220px;
+    padding: 8px 10px;
+  }
+  .used-node-id { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-3); }
+  .used-node-name { color: var(--fg-1); font-size: 11.5px; line-height: 1.25; text-align: left; }
   .notes {
     display: flex; align-items: flex-start; gap: 6px;
     font-size: 11.5px; color: var(--fg-3); font-style: italic;

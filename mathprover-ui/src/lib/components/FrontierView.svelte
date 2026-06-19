@@ -2,14 +2,14 @@
   import StatusPill from './StatusPill.svelte';
   import Icon from './Icon.svelte';
   import { app } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, CHILDREN_BY_ID } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, CHILDREN_BY_ID, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { TheoremNode } from '$lib/types';
 
   type Candidate = { node: TheoremNode; deps: TheoremNode[]; depsProven: boolean; priority: number; tractability: number };
 
   let candidates = $derived.by<Candidate[]>(() => {
-    return NODES
+    return ACTIVE_NODES
       .filter((n) => {
         const sk = statusKey(n.status);
         return sk === 'READY' || sk === 'SORRIES' || sk === 'STUCK' || sk === 'UNEXPLORED' || sk === 'DRAFT';
@@ -63,11 +63,18 @@
     </div>
 
     {#each ready as c, i (c.node.id)}
+      {@const scope = primaryFoundationForNode(c.node.id)}
       <div class="frontier-row" role="button" tabindex="0" onclick={() => selectAndShowGraph(c.node.id)} onkeydown={(e) => e.key === 'Enter' && selectAndShowGraph(c.node.id)}>
         <div class="rank">#{i + 1}</div>
         <div class="text-left">
           <div class="ttl">{c.node.paper_name}</div>
           <div class="pid">{c.node.paper_id} · {c.node.lean_theorem} · {c.deps.length} dep{c.deps.length !== 1 ? 's' : ''}</div>
+          {#if scope}
+            <div class="pid" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <span class="kind-pill" style:background={scope.kind === 'paper' ? 'var(--st-proven-bg)' : scope.kind === 'shared' ? 'var(--st-sorries-bg)' : 'var(--bg-3)'} style:color={scope.kind === 'paper' ? 'var(--st-proven)' : scope.kind === 'shared' ? 'var(--st-sorries)' : 'var(--fg-3)'}>{scope.kind ?? 'foundation'}</span>
+              <span>{scope.name}</span>
+            </div>
+          {/if}
         </div>
         <div class="text-center"><StatusPill status={c.node.status} /></div>
         <div>
@@ -103,13 +110,20 @@
         </div>
       </div>
       {#each blocked as c (c.node.id)}
+        {@const scope = primaryFoundationForNode(c.node.id)}
         {@const missing = c.deps.filter((d) => statusKey(d.status) !== 'PROVEN')}
         <button class="frontier-row" type="button" onclick={() => selectAndShowGraph(c.node.id)} style:opacity={0.7}>
           <div class="rank fg-4">—</div>
           <div class="text-left">
             <div class="ttl">{c.node.paper_name}</div>
             <div class="pid">blocked by: {missing.map((m) => m.paper_id).join(', ')}</div>
-          </div>
+          {#if scope}
+            <div class="pid" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <span class="kind-pill" style:background={scope.kind === 'paper' ? 'var(--st-proven-bg)' : scope.kind === 'shared' ? 'var(--st-sorries-bg)' : 'var(--bg-3)'} style:color={scope.kind === 'paper' ? 'var(--st-proven)' : scope.kind === 'shared' ? 'var(--st-sorries)' : 'var(--fg-3)'}>{scope.kind ?? 'foundation'}</span>
+              <span>{scope.name}</span>
+            </div>
+          {/if}
+        </div>
           <div class="text-center"><StatusPill status={c.node.status} /></div>
           <div>
             <div class="meter"><div class="meter-fill acc" style:width="{c.node.importance * 100}%"></div></div>

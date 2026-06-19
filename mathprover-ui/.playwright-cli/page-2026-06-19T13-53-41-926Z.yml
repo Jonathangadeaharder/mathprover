@@ -1,0 +1,52 @@
+- generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+        - /url: "#main-content"
+    - generic [ref=e5]: Home page
+    - navigation "Main navigation" [ref=e6]:
+        - generic [ref=e7]:
+            - link "Vidiom Cinema · Languages" [ref=e8] [cursor=pointer]:
+                - /url: /
+                - img [ref=e11]
+                - generic [ref=e25]:
+                    - generic [ref=e26]: Vidiom
+                    - generic [ref=e27]: Cinema · Languages
+            - navigation "Primary navigation" [ref=e28]:
+                - link "Home" [ref=e29] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e30]
+                    - text: Home
+                - link "Studio" [ref=e33] [cursor=pointer]:
+                    - /url: /studio
+                    - img [ref=e34]
+                    - text: Studio
+                - link "Vocabulary" [ref=e36] [cursor=pointer]:
+                    - /url: /vocabulary
+                    - img [ref=e37]
+                    - text: Vocabulary
+                - link "Games" [ref=e39] [cursor=pointer]:
+                    - /url: /games
+                    - img [ref=e40]
+                    - text: Games
+            - generic [ref=e42]:
+                - link "Search library" [ref=e43] [cursor=pointer]:
+                    - /url: /search
+                    - img [ref=e44]
+                - generic [ref=e47]:
+                    - generic [ref=e48]: ES
+                    - generic [ref=e49]: →
+                    - generic [ref=e50]: EN
+                - link "Open profile" [ref=e51] [cursor=pointer]:
+                    - /url: /profile
+                    - text: VD
+                - button "Sign out" [ref=e52]:
+                    - img [ref=e53]
+    - main [ref=e56]:
+        - heading "404" [level=1] [ref=e57]
+        - paragraph [ref=e58]: Not Found
+    - contentinfo [ref=e59]:
+        - generic [ref=e61]:
+            - generic [ref=e62]: © 2026 · Stories · Languages · Cinema
+            - generic [ref=e63]:
+                - generic [ref=e64]: Local-first
+                - generic [ref=e65]: ·
+                - generic [ref=e66]: Open beta

@@ -2,16 +2,30 @@
   import StatusPill from './StatusPill.svelte';
   import Icon from './Icon.svelte';
   import { app, tweaks } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, CHILDREN_BY_ID, activeAgent } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, CHILDREN_BY_ID, activeAgent, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { TheoremNode, EdgeSufficiency } from '$lib/types';
 
   const NODE_W = 200;
   const NODE_H = 96;
-  const LAYER_H = 150;
-  const NODE_GAP = 36;
+  const GRID_X = NODE_W + 38;
+  const GRID_Y = NODE_H + 24;
+  const LANE_GAP = 76;
+  const TOP_MARGIN = 96;
+  const LEFT_MARGIN = 96;
 
   type Pos = { x: number; y: number };
+  type Lane = {
+    key: string;
+    label: string;
+    subtitle: string;
+    kind: string;
+    count: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
 
   function computeLayout(nodes: TheoremNode[], layout: string) {
     const byId: Record<string, TheoremNode> = Object.fromEntries(nodes.map((n) => [n.id, n]));
@@ -40,20 +54,111 @@
 
     const positions: Record<string, Pos> = {};
 
+    function statusScore(id: string): number {
+      const sk = statusKey(byId[id]?.status || '');
+      const order: Record<string, number> = {
+        PROVEN: 0,
+        READY: 1,
+        IN_PROGRESS: 2,
+        SORRIES: 3,
+        BLOCKED: 4,
+        STUCK: 5,
+        DRAFT: 6,
+        REJECTED: 7,
+        DISPROVEN: 8,
+        UNEXPLORED: 9,
+      };
+      return order[sk] ?? 9;
+    }
+
+    function groupOrder(id: string): [number, string, number, string] {
+      const scope = primaryFoundationForNode(id);
+      const kindRank = scope?.kind === 'paper' ? 0 : scope?.kind === 'shared' ? 1 : 2;
+      const name = scope?.name ?? 'unscoped';
+      return [kindRank, name, statusScore(id), id];
+    }
+
     if (layout === 'dag') {
-      Object.keys(layers).sort((a, b) => +a - +b).forEach((L) => {
-        const ids = layers[+L];
-        ids.sort((a, b) => (byId[b].importance || 0) - (byId[a].importance || 0));
-        const arr: string[] = [];
-        for (let i = 0; i < ids.length; i++) {
-          if (i % 2 === 0) arr.push(ids[i]);
-          else arr.unshift(ids[i]);
-        }
-        const total = arr.length * (NODE_W + NODE_GAP) - NODE_GAP;
-        arr.forEach((id, i) => {
-          positions[id] = { x: 400 - total / 2 + i * (NODE_W + NODE_GAP), y: 80 + +L * LAYER_H };
+      const groups = new Map<string, string[]>();
+      for (const n of nodes) {
+        const scope = primaryFoundationForNode(n.id);
+        const key = scope ? `${scope.kind ?? 'foundation'}::${scope.name}` : 'zz::Needs workstream';
+        groups.set(key, [...(groups.get(key) || []), n.id]);
+      }
+
+      function naturalRank(id: string): [number, number, number, string] {
+        const n = byId[id];
+        const text = `${n.paper_id} ${n.id}`;
+        const c2 = text.match(/\bC2[_\s-]*M(\d+)/i);
+        const crn = text.match(/\bCRN[_\s-]*R(\d+)/i);
+        const m = text.match(/\bM(\d+)/i);
+        if (n.isCapstone) return [0, 0, statusScore(id), id];
+        if (c2) return [1, Number(c2[1]), statusScore(id), id];
+        if (crn) return [2, Number(crn[1]), statusScore(id), id];
+        if (m) return [3, Number(m[1]), statusScore(id), id];
+        return [4, layerOf[id] ?? 0, statusScore(id), id];
+      }
+
+      const orderedGroups = [...groups.entries()]
+        .map(([key, ids]) => ({
+          key,
+          ids: [...ids].sort((a, b) => {
+            const ra = naturalRank(a);
+            const rb = naturalRank(b);
+            for (let i = 0; i < ra.length; i++) {
+              if (ra[i] !== rb[i]) return typeof ra[i] === 'string'
+                ? String(ra[i]).localeCompare(String(rb[i]))
+                : Number(ra[i]) - Number(rb[i]);
+            }
+            return a.localeCompare(b);
+          }),
+          order: groupOrder(ids[0]),
+        }))
+        .sort((a, b) => {
+          const [ka, na, sa, ia] = a.order;
+          const [kb, nb, sb, ib] = b.order;
+          if (ka !== kb) return ka - kb;
+          if (na !== nb) return na.localeCompare(nb);
+          if (sa !== sb) return sa - sb;
+          return ia.localeCompare(ib);
         });
-      });
+
+      function placeGroup(group: { ids: string[] }, x: number, y: number, columns: number): number {
+        const rows = Math.ceil(group.ids.length / columns);
+        group.ids.forEach((id, i) => {
+          const col = i % columns;
+          const row = Math.floor(i / columns);
+          positions[id] = {
+            x: x + col * GRID_X,
+            y: y + row * GRID_Y,
+          };
+        });
+        return rows * GRID_Y;
+      }
+
+      const [primary, ...secondary] = orderedGroups;
+      let yCursor = TOP_MARGIN;
+      if (primary) {
+        const primaryColumns = primary.ids.length >= 16 ? 5 : Math.max(3, Math.min(5, Math.ceil(primary.ids.length / 3)));
+        yCursor += placeGroup(primary, LEFT_MARGIN, yCursor, primaryColumns) + LANE_GAP;
+      }
+
+      const secondaryColumns = 2;
+      const secondaryWidth = NODE_W + (secondaryColumns - 1) * GRID_X;
+      const laneColumnGap = 72;
+      const xColumns = [
+        LEFT_MARGIN,
+        LEFT_MARGIN + secondaryWidth + laneColumnGap,
+        LEFT_MARGIN + (secondaryWidth + laneColumnGap) * 2,
+      ];
+      const yColumns = xColumns.map(() => yCursor);
+
+      for (const group of secondary) {
+        const colIndex = yColumns.reduce((best, y, i) => (y < yColumns[best] ? i : best), 0);
+        const columns = Math.min(secondaryColumns, Math.max(1, group.ids.length));
+        const usedHeight = placeGroup(group, xColumns[colIndex], yColumns[colIndex], columns);
+        yColumns[colIndex] += usedHeight + LANE_GAP;
+      }
     } else if (layout === 'radial') {
       const maxL = Math.max(...Object.values(layerOf));
       const cx = 600, cy = 400;
@@ -80,7 +185,7 @@
         ids.forEach((id, i) => {
           positions[id] = {
             x: 200 + i * (NODE_W + 60) + Math.sin((+L + i) * 1.7) * 30,
-            y: 60 + +L * LAYER_H + Math.cos(i * 0.9) * 20,
+            y: 60 + +L * 150 + Math.cos(i * 0.9) * 20,
           };
         });
       });
@@ -90,7 +195,7 @@
   }
 
   let visibleNodes = $derived(
-    tweaks.show_proven ? NODES : NODES.filter((n) => statusKey(n.status) !== 'PROVEN')
+    tweaks.show_proven ? ACTIVE_NODES : ACTIVE_NODES.filter((n) => statusKey(n.status) !== 'PROVEN')
   );
   let positions = $derived(computeLayout(visibleNodes, tweaks.graph_layout));
 
@@ -100,7 +205,14 @@
   let nodeDrag = $state<{ id: string; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
   let stageEl: HTMLDivElement;
 
-  $effect(() => { void tweaks.graph_layout; void tweaks.show_proven; nodePos = {}; centerView(); });
+  $effect(() => {
+    void tweaks.graph_layout;
+    void tweaks.show_proven;
+    void visibleNodes.length;
+    void Object.keys(positions).length;
+    nodePos = {};
+    centerView();
+  });
 
   let related = $derived.by(() => {
     const focus = app.hoveredId || app.selectedNodeId;
@@ -123,12 +235,26 @@
         if (!positions[d] || !positions[n.id]) return;
         const from = resolvePos(d);
         const to = resolvePos(n.id);
-        const x1 = from.x + NODE_W / 2;
-        const y1 = from.y + NODE_H;
-        const x2 = to.x + NODE_W / 2;
-        const y2 = to.y;
-        const mid = (y1 + y2) / 2;
-        const path = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`;
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        let path: string;
+        if (Math.abs(dx) > Math.abs(dy) * 0.7) {
+          const leftToRight = dx >= 0;
+          const x1 = leftToRight ? from.x + NODE_W : from.x;
+          const y1 = from.y + NODE_H / 2;
+          const x2 = leftToRight ? to.x : to.x + NODE_W;
+          const y2 = to.y + NODE_H / 2;
+          const mid = (x1 + x2) / 2;
+          path = `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`;
+        } else {
+          const topToBottom = dy >= 0;
+          const x1 = from.x + NODE_W / 2;
+          const y1 = topToBottom ? from.y + NODE_H : from.y;
+          const x2 = to.x + NODE_W / 2;
+          const y2 = topToBottom ? to.y : to.y + NODE_H;
+          const mid = (y1 + y2) / 2;
+          path = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`;
+        }
         const isHi = related ? (related.has(d) && related.has(n.id)) : false;
         const isDim = related ? !isHi : false;
         const childSk = statusKey(NODE_BY_ID[d]?.status || '');
@@ -146,6 +272,45 @@
       });
     });
     return out;
+  });
+
+  let lanes = $derived.by<Lane[]>(() => {
+    const grouped = new Map<string, { label: string; subtitle: string; kind: string; ids: string[] }>();
+    for (const n of visibleNodes) {
+      const scope = primaryFoundationForNode(n.id);
+      const key = scope ? `${scope.kind ?? 'foundation'}::${scope.name}` : 'zz::Needs workstream';
+      const label = scope ? scope.name : 'Needs workstream';
+      const subtitle = scope
+        ? (scope.subgoals?.length
+          ? scope.subgoals.map((s) => s.desc).slice(0, 2).join(' -> ')
+          : scope.summary || scope.citation || '')
+        : 'Unassigned artifacts that need a parent paper or library objective.';
+      const kind = scope?.kind ?? 'unscoped';
+      grouped.set(key, {
+        label,
+        subtitle,
+        kind,
+        ids: [...(grouped.get(key)?.ids || []), n.id],
+      });
+    }
+    return [...grouped.entries()].map(([key, g]) => {
+      const ps = g.ids.map((id) => resolvePos(id)).filter(Boolean);
+      const minX = Math.min(...ps.map((p) => p.x));
+      const minY = Math.min(...ps.map((p) => p.y));
+      const maxX = Math.max(...ps.map((p) => p.x + NODE_W));
+      const maxY = Math.max(...ps.map((p) => p.y + NODE_H));
+      return {
+        key,
+        label: g.label,
+        subtitle: g.subtitle,
+        kind: g.kind,
+        count: g.ids.length,
+        x: minX - 18,
+        y: minY - 54,
+        w: maxX - minX + 36,
+        h: maxY - minY + 72,
+      };
+    });
   });
 
   function onWheel(e: WheelEvent) {
@@ -192,19 +357,40 @@
     drag = { scale: ns, x: mx - (mx - drag.x) * k, y: my - (my - drag.y) * k };
   }
 
-  function centerView(scale = 0.85) {
+  function centerView(scale = 0.85, fit = false) {
     if (!stageEl) return;
     const rect = stageEl.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      drag = { x: drag.x, y: drag.y, scale: drag.scale || scale };
+      return;
+    }
     const ps = visibleNodes.map((n) => positions[n.id]).filter(Boolean);
     if (ps.length === 0) { drag = { x: 0, y: 0, scale }; return; }
-    const xs = ps.map((p) => p.x);
-    const ys = ps.map((p) => p.y);
-    const cx = (Math.min(...xs) + Math.max(...xs) + NODE_W) / 2;
-    const cy = (Math.min(...ys) + Math.max(...ys) + NODE_H) / 2;
-    drag = { scale, x: rect.width / 2 - cx * scale, y: rect.height / 2 - cy * scale };
+    const minX = Math.min(...ps.map((p) => p.x));
+    const minY = Math.min(...ps.map((p) => p.y));
+    const maxX = Math.max(...ps.map((p) => p.x + NODE_W));
+    const maxY = Math.max(...ps.map((p) => p.y + NODE_H));
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    let targetScale = scale;
+    if (fit && !app.projectRoot.includes("test-project")) {
+      const fitScale = Math.min(
+        scale,
+        (rect.width - 48) / Math.max(1, maxX - minX),
+        (rect.height - 48) / Math.max(1, maxY - minY),
+      );
+      targetScale = Math.max(0.38, Math.min(scale, fitScale));
+    }
+
+    drag = {
+      scale: targetScale,
+      x: rect.width / 2 - cx * targetScale + 40,
+      y: rect.height / 2 - cy * targetScale,
+    };
   }
 
-  function fit() { centerView(); nodePos = {}; }
+  function fit() { centerView(0.85, true); nodePos = {}; }
 
   const legend = ['PROVEN','DISPROVEN','SORRIES','IN_PROGRESS','STUCK','DRAFT','REJECTED','BLOCKED','READY','UNEXPLORED'];
   const activeRun = $derived(activeAgent());
@@ -230,6 +416,25 @@
   tabindex="0"
 >
   <div class="graph-canvas" style:transform="translate({drag.x}px, {drag.y}px) scale({drag.scale})">
+    {#each lanes as lane (lane.key)}
+      <div
+        class="graph-lane"
+        data-kind={lane.kind}
+        style:left="{lane.x}px"
+        style:top="{lane.y}px"
+        style:width="{lane.w}px"
+        style:height="{lane.h}px"
+      >
+        <div class="graph-lane-title">
+          <span>
+            <strong>{lane.label}</strong>
+            {#if lane.subtitle}<em>{lane.subtitle}</em>{/if}
+          </span>
+          <span>{lane.count}</span>
+        </div>
+      </div>
+    {/each}
+
     <svg class="graph-svg graph-svg-base">
       <defs>
         <marker id="arrow" viewBox="0 -3 6 6" refX="6" refY="0" markerWidth="6" markerHeight="6" orient="auto">
@@ -264,6 +469,7 @@
       {@const isDim = related ? !related.has(n.id) : false}
       {@const isSel = app.selectedNodeId === n.id}
       {@const isActiveRun = activeRun?.node === n.id || activeRun?.node === n.proof_folder}
+      {@const scope = primaryFoundationForNode(n.id)}
       <div
         class="gnode"
         class:selected={isSel}
@@ -281,7 +487,7 @@
         role="button"
         tabindex="0"
         title={isActiveRun ? `${activeRun?.agent} running since ${activeRun?.started}` : n.paper_name}
-      >
+        >
         {#if isActiveRun}<span class="run-ring" aria-hidden="true"></span>{/if}
         <div class="gn-id">
           <span>{n.paper_id}</span>
@@ -289,6 +495,12 @@
           {#if isActiveRun}<span class="gn-flag running">{activeRun?.agent || 'running'}</span>{:else if sk === 'READY' && !n.isCapstone}<span class="gn-flag frontier">frontier</span>{/if}
         </div>
         <div class="gn-title">{n.paper_name}</div>
+        {#if scope}
+          <div class="gn-origin" title={scope.summary || scope.citation}>
+            <span class="kind-pill">{scope.kind ?? 'foundation'}</span>
+            <span>{scope.name}</span>
+          </div>
+        {/if}
         {#if n.paper_section}
           <div class="gn-origin">{n.paper_section}</div>
         {/if}

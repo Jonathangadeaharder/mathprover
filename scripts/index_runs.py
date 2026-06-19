@@ -146,6 +146,24 @@ def backfill_all(project_root: Path) -> list[RunRecord]:
     return created
 
 
+def tombstone_stale_runs(project_root: Path) -> int:
+    count = 0
+    for run in list_runs(project_root):
+        if not is_stale_run(run):
+            continue
+        run.status = "superseded"
+        run.result = "SUPERSEDED"
+        run.verify_ok = False
+        run.ended_at = run.ended_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        run.message = (
+            run.message
+            or "stale local run marked terminal during reindex; superseded by later graph state"
+        )
+        write_run(project_root, run)
+        count += 1
+    return count
+
+
 def run_to_attempt(run: RunRecord) -> dict:
     started = run.started_at.replace("T", " ").replace("Z", " UTC")
     ended = (run.ended_at or run.started_at).replace("T", " ").replace("Z", " UTC")
@@ -168,10 +186,11 @@ def run_to_attempt(run: RunRecord) -> dict:
 
 
 def merge_attempts_into_graph(project_root: Path, graph: dict) -> dict:
+    tombstone_stale_runs(project_root)
     runs = list_runs(project_root)
     by_node: dict[str, list[dict]] = {}
     for run in runs:
-        if run.status not in {"ok", "failed", "error"}:
+        if run.status not in {"ok", "failed", "error", "superseded"}:
             continue
         by_node.setdefault(run.node_id, []).append(run_to_attempt(run))
 
@@ -213,6 +232,10 @@ def main() -> int:
     if args.backfill:
         created = backfill_all(root)
         print(f"[index_runs] backfilled {len(created)} runs", file=sys.stderr)
+
+    stale = tombstone_stale_runs(root)
+    if stale:
+        print(f"[index_runs] tombstoned {stale} stale runs", file=sys.stderr)
 
     if args.graph:
         graph_path = root / ".mathprover" / "graph.json"

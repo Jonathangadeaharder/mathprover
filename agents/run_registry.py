@@ -45,7 +45,7 @@ class RunRecord:
     proof_folder: str
     prover: str
     route_reason: str
-    status: str  # pending | running | ok | failed | error
+    status: str  # pending | running | ok | failed | error | superseded
     started_at: str
     log_path: str
     ended_at: str | None = None

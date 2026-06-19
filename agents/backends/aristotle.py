@@ -202,6 +202,7 @@ async def _run_aristotle_async(
                     project_id=project_id,
                 )
 
+            destination.mkdir(parents=True, exist_ok=True)
             archive = await project.get_files(destination=destination / f"{project_id}.tar.gz")
             log.write(f"downloaded={archive}\n")
             extract_root = destination / "extracted"

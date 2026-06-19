@@ -67,6 +67,8 @@ export interface TheoremNode {
   proof_folder?: string;
   worker_state?: "todo" | "in_progress" | "done" | string;
   sufficiencyOverride?: Record<string, EdgeSufficiency>;
+  archived?: boolean;
+  archive_reason?: string;
 }
 
 export type DefinitionKind =
@@ -145,7 +147,7 @@ export interface RunRecord {
   proof_folder: string;
   prover: string;
   route_reason: string;
-  status: "pending" | "running" | "ok" | "failed" | "error";
+  status: "pending" | "running" | "ok" | "failed" | "error" | "superseded";
   started_at: string;
   ended_at?: string | null;
   log_path: string;
@@ -160,6 +162,7 @@ export interface RunRecord {
 }
 
 export type FoundationStatus = "AXIOM" | "PARTIAL" | "MECHANIZED" | "PLANNED";
+export type FoundationKind = "foundation" | "paper" | "shared";
 
 export interface FoundationSubgoal {
   id: string;
@@ -176,6 +179,9 @@ export interface Foundation {
   venue?: string;
   doi?: string;
   status: FoundationStatus;
+  kind?: FoundationKind;
+  priority?: number;
+  summary?: string;
   lean_name?: string;
   lean_file?: string;
   lean_line?: number | null;

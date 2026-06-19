@@ -1,4 +1,9 @@
-import { fetchGoedelStatus, fetchProject, subscribeRunStream } from "./api";
+import {
+  fetchGoedelStatus,
+  fetchProject,
+  subscribeRunStream,
+  syncProject,
+} from "./api";
 import { setProjectData, app, project } from "./stores.svelte";
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -14,10 +19,16 @@ export async function refreshProject() {
   if (data) setProjectData(data);
 }
 
+export async function syncProjectIfNeeded() {
+  if (!app.projectRoot) return;
+  const result = await syncProject(app.projectRoot);
+  if (result?.data) setProjectData(result.data);
+}
+
 export function startLivePolling() {
   stopLivePolling();
   const tick = async () => {
-    await refreshProject();
+    await syncProjectIfNeeded();
     await checkGoedelLock();
     const active = project.data.activeAgent;
     if (active?.runId && active.runId !== app.activeRunId) {

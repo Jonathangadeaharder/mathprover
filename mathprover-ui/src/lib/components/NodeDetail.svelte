@@ -5,7 +5,8 @@
   import RunAgentButton from './RunAgentButton.svelte';
   import GitGraph from './GitGraph.svelte';
   import { app } from '$lib/stores.svelte';
-  import { NODE_BY_ID, CHILDREN_BY_ID, DEF_BY_ID } from '$lib/data';
+  import { NODE_BY_ID, CHILDREN_BY_ID, DEF_BY_ID, foundationsForNode } from '$lib/data';
+  import type { Foundation } from '$lib/types';
   import { highlightLean, statusKey } from '$lib/lean';
 
   type Tab = 'overview' | 'paper' | 'lean' | 'mapping' | 'attempts' | 'sorries';
@@ -54,6 +55,13 @@
   let depsResolved = $derived(node ? (node.depends_on || []).map((d) => NODE_BY_ID[d]).filter(Boolean) : []);
   let children = $derived(node ? (CHILDREN_BY_ID[node.id] || []).map((c) => NODE_BY_ID[c]).filter(Boolean) : []);
   let defsUsed = $derived(node ? (node.uses_defs || []).map((d) => DEF_BY_ID[d]).filter(Boolean) : []);
+  let scopes = $derived(node ? foundationsForNode(node.id) : []);
+
+  function scopeAccent(scope: Foundation) {
+    if (scope.kind === 'paper') return { bg: 'var(--st-proven-bg)', fg: 'var(--st-proven)' };
+    if (scope.kind === 'shared') return { bg: 'var(--st-sorries-bg)', fg: 'var(--st-sorries)' };
+    return { bg: 'var(--bg-3)', fg: 'var(--fg-3)' };
+  }
 
   function openDef(id: string) {
     app.selectedDefId = id;
@@ -89,6 +97,18 @@
       <div class="detail-lean-theorem mono-sm" style="margin-top: 2px;">
         {node.lean_theorem}
       </div>
+      {#if scopes.length > 0}
+        <div class="flex-gap-sm" style="margin-top: 10px; flex-wrap: wrap; align-items: center;">
+          <span class="section-label" style="margin: 0;">Workstream</span>
+          {#each scopes as scope (scope.id)}
+            {@const tone = scopeAccent(scope)}
+            <span class="kind-pill" style:background={tone.bg} style:color={tone.fg}>
+              {scope.kind ?? 'foundation'} · {scope.name}
+            </span>
+          {/each}
+        </div>
+      {/if}
+
       <div class="flex-gap-sm" style="margin-top: 12px; flex-wrap: wrap;">
         {#if sk !== 'PROVEN' && sk !== 'IN_PROGRESS' && sk !== 'DISPROVEN' && sk !== 'REJECTED'}
           <RunAgentButton disabled={!allDepsProven && sk === 'BLOCKED'} status={sk} onrun={runAgent} />
@@ -102,7 +122,7 @@
           <Icon name="page" size={12} />Paper ⇄ Lean
         </button>
       </div>
-    </div>
+      </div>
 
     <div class="detail-tabs">
       {#each [
@@ -163,6 +183,23 @@
             <dt>Attempts</dt><dd>{node.attempts}</dd>
           </dl>
         </section>
+
+        {#if scopes.length > 0}
+          <section class="detail-section">
+            <h3>Workstream rationale</h3>
+            <div class="flex-gap-sm" style="flex-wrap: wrap;">
+              {#each scopes as scope (scope.id)}
+                {@const tone = scopeAccent(scope)}
+                <span class="kind-pill" style:background={tone.bg} style:color={tone.fg}>
+                  {scope.kind ?? 'foundation'} · {scope.name}
+                </span>
+              {/each}
+            </div>
+            <p class="meta-text" style="margin: 8px 0 0;">
+              The first badge is the primary reading. Paper-facing work outranks shared work, and shared work outranks foundation work when a theorem sits in multiple streams.
+            </p>
+          </section>
+        {/if}
 
         {#if defsUsed.length > 0}
           <section class="detail-section">
@@ -422,4 +459,3 @@ theorem {node.lean_theorem} ...{/if}</pre>
     </div>
   {/if}
 </div>
-
