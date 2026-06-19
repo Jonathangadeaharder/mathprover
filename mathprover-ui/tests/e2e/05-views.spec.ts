@@ -215,8 +215,12 @@ test.describe("Foundations view", () => {
   });
 
   test("foundations render cards", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Stochastic Dominance Lemma" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Markov Chain Hitting Time" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Stochastic Dominance Lemma" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Markov Chain Hitting Time" }),
+    ).toBeVisible();
   });
 
   test("foundations show status pills", async ({ page }) => {

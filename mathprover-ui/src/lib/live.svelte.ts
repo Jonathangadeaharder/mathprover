@@ -1,4 +1,9 @@
-import { fetchGoedelStatus, fetchProject, subscribeRunStream, syncProject } from "./api";
+import {
+  fetchGoedelStatus,
+  fetchProject,
+  subscribeRunStream,
+  syncProject,
+} from "./api";
 import { setProjectData, app, project } from "./stores.svelte";
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;

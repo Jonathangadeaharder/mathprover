@@ -617,17 +617,29 @@ select:focus {
 
 .graph-lane[data-kind="paper"] {
   border-color: var(--st-proven-border);
-  background: linear-gradient(180deg, rgba(74, 222, 128, 0.055), rgba(17, 19, 22, 0.44));
+  background: linear-gradient(
+    180deg,
+    rgba(74, 222, 128, 0.055),
+    rgba(17, 19, 22, 0.44)
+  );
 }
 
 .graph-lane[data-kind="shared"] {
   border-color: var(--st-sorries-border);
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.05), rgba(17, 19, 22, 0.44));
+  background: linear-gradient(
+    180deg,
+    rgba(251, 191, 36, 0.05),
+    rgba(17, 19, 22, 0.44)
+  );
 }
 
 .graph-lane[data-kind="foundation"] {
   border-color: var(--accent-border);
-  background: linear-gradient(180deg, rgba(139, 124, 246, 0.05), rgba(17, 19, 22, 0.44));
+  background: linear-gradient(
+    180deg,
+    rgba(139, 124, 246, 0.05),
+    rgba(17, 19, 22, 0.44)
+  );
 }
 
 .graph-lane-title {

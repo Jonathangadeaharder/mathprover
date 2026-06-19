@@ -5,6 +5,7 @@ This mechanizes the core engine: Lemma 1 (bounded conditional increments),
 Theorem 1 (variance overcomes negative drift), and the recurrence engine.
 A detailed plan exists at docs/plans/variance-drift-mechanization.md.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.backends.aristotle import _stage_project, preflight
+
 from config import load_config
 
 PROMPT = r"""Mechanize the Variance Drift theorem with exponential tail bounds in Lean 4.
@@ -116,9 +118,7 @@ async def main() -> int:
 
         from aristotlelib.project import Project
 
-        project = await Project.create_from_directory(
-            prompt=PROMPT, project_dir=stage_root
-        )
+        project = await Project.create_from_directory(prompt=PROMPT, project_dir=stage_root)
         project_id = project.project_id
         tasks, _ = await project.get_tasks(limit=1)
         if not tasks:

@@ -8,6 +8,7 @@ Does NOT poll — monitor with:
     python3 agents/aristotle_attach.py --project-id <project_id> --task-id <task_id> \
         --node CRN_constant_ratio_runtime --wait
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.backends.aristotle import _stage_project, preflight  # noqa: E402
+
 from config import load_config  # noqa: E402
 
 PROMPT = r"""Close ONLY the `sorry` in `proofs/CRN_constant_ratio_runtime/attempt.lean` at the lemma `cr_fill_bottleneck_ge` (line 651). Do not modify any other lemma, theorem, or file.
@@ -64,9 +66,7 @@ async def main() -> int:
 
         from aristotlelib.project import Project  # noqa: E402
 
-        project = await Project.create_from_directory(
-            prompt=PROMPT, project_dir=stage_root
-        )
+        project = await Project.create_from_directory(prompt=PROMPT, project_dir=stage_root)
         project_id = project.project_id
         tasks, _ = await project.get_tasks(limit=1)
         if not tasks:

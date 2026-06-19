@@ -171,11 +171,15 @@ function latestMtimeInTree(root: string): number {
       }
       if (st.isDirectory()) {
         const rel = full.slice(root.length + 1).replace(/\\/g, "/");
-        if (SYNC_DIR_EXCLUDES.has(entry) || SYNC_DIR_EXCLUDES.has(rel)) continue;
+        if (SYNC_DIR_EXCLUDES.has(entry) || SYNC_DIR_EXCLUDES.has(rel))
+          continue;
         stack.push(full);
         continue;
       }
-      if (SYNC_FILE_EXTS.has(full.slice(full.lastIndexOf("."))) || entry === "mathprover.toml") {
+      if (
+        SYNC_FILE_EXTS.has(full.slice(full.lastIndexOf("."))) ||
+        entry === "mathprover.toml"
+      ) {
         latest = Math.max(latest, st.mtimeMs);
       }
     }
@@ -206,7 +210,9 @@ export function projectGraphNeedsSync(root: string): boolean {
   return latestMtimeInTree(root) > graphMtime(root);
 }
 
-export async function reindexProjectGraph(root: string): Promise<{ code: number; out: string; err: string }> {
+export async function reindexProjectGraph(
+  root: string,
+): Promise<{ code: number; out: string; err: string }> {
   const projectReindex = resolve(root, "scripts/reindex_graph.py");
   if (existsSync(projectReindex)) {
     return runPythonText(root, [projectReindex]);
@@ -239,7 +245,10 @@ export async function syncProject(root: string): Promise<{
   let data: ProjectData | null = null;
   let error: string | null = null;
   if (reindex && reindex.code !== 0) {
-    error = reindex.err.trim() || reindex.out.trim() || `reindex failed with exit code ${reindex.code}`;
+    error =
+      reindex.err.trim() ||
+      reindex.out.trim() ||
+      `reindex failed with exit code ${reindex.code}`;
   }
   try {
     data = await enrichGraph(root);
@@ -263,13 +272,17 @@ export async function loadGraph(root: string): Promise<ProjectData> {
   if (!existsSync(metaPath)) return merged;
 
   try {
-    const meta = JSON.parse(await readFile(metaPath, "utf-8")) as Partial<ProjectData>;
+    const meta = JSON.parse(
+      await readFile(metaPath, "utf-8"),
+    ) as Partial<ProjectData>;
     return {
       ...merged,
       ...meta,
       project: { ...merged.project, ...(meta.project || {}) },
       nodes: merged.nodes,
-      definitions: meta.definitions?.length ? meta.definitions : merged.definitions,
+      definitions: meta.definitions?.length
+        ? meta.definitions
+        : merged.definitions,
       foundations: (meta.foundations || merged.foundations || []).map((f) => ({
         ...f,
         status: String(f.status || "PLANNED").toUpperCase(),
@@ -278,13 +291,20 @@ export async function loadGraph(root: string): Promise<ProjectData> {
         description: f.description || f.summary || f.citation || "",
         subgoals: f.subgoals || [],
       })),
-      paperBlocks: meta.paperBlocks?.length ? meta.paperBlocks : merged.paperBlocks,
+      paperBlocks: meta.paperBlocks?.length
+        ? meta.paperBlocks
+        : merged.paperBlocks,
       leanBlocks: meta.leanBlocks?.length ? meta.leanBlocks : merged.leanBlocks,
-      terms: Object.keys(meta.terms || {}).length ? meta.terms || {} : merged.terms,
+      terms: Object.keys(meta.terms || {}).length
+        ? meta.terms || {}
+        : merged.terms,
       failures: meta.failures?.length ? meta.failures : merged.failures,
     } as ProjectData;
   } catch (err) {
-    log.warn({ root, error: (err as Error).message }, "failed to load .mathprover/meta.json");
+    log.warn(
+      { root, error: (err as Error).message },
+      "failed to load .mathprover/meta.json",
+    );
     return merged;
   }
 }
@@ -303,11 +323,21 @@ export async function enrichGraph(root: string): Promise<ProjectData> {
     ...enriched,
     project: { ...base.project, ...enriched.project },
     nodes: enriched.nodes?.length ? enriched.nodes : base.nodes,
-    definitions: enriched.definitions?.length ? enriched.definitions : base.definitions,
-    foundations: enriched.foundations?.length ? enriched.foundations : base.foundations,
-    paperBlocks: enriched.paperBlocks?.length ? enriched.paperBlocks : base.paperBlocks,
-    leanBlocks: enriched.leanBlocks?.length ? enriched.leanBlocks : base.leanBlocks,
-    terms: Object.keys(enriched.terms || {}).length ? enriched.terms : base.terms,
+    definitions: enriched.definitions?.length
+      ? enriched.definitions
+      : base.definitions,
+    foundations: enriched.foundations?.length
+      ? enriched.foundations
+      : base.foundations,
+    paperBlocks: enriched.paperBlocks?.length
+      ? enriched.paperBlocks
+      : base.paperBlocks,
+    leanBlocks: enriched.leanBlocks?.length
+      ? enriched.leanBlocks
+      : base.leanBlocks,
+    terms: Object.keys(enriched.terms || {}).length
+      ? enriched.terms
+      : base.terms,
     failures: enriched.failures?.length ? enriched.failures : base.failures,
     activeAgent: enriched.activeAgent ?? base.activeAgent,
   });

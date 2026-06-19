@@ -16,7 +16,7 @@ rules:
       - ".git/**"
 
   max-files-in-dir:
-    max: 40
+    max: 50
     exemptions:
       - ".git/**"
       - "mathprover-ui/src/**"

@@ -10,6 +10,7 @@ Goal: Create DriftTheorems/ArtificialFitnessLevels.lean with:
 - Hitting time upper/lower bounds via sum of 1/p_i
 - Integration with existing drift theorems (Additive, Multiplicative, Negative)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.backends.aristotle import _stage_project, preflight  # noqa: E402
+
 from config import load_config  # noqa: E402
 
 PROMPT = r"""Mechanize the Artificial Fitness Levels (AFL) method in Lean 4.
@@ -97,9 +99,7 @@ async def main() -> int:
 
         from aristotlelib.project import Project  # noqa: E402
 
-        project = await Project.create_from_directory(
-            prompt=PROMPT, project_dir=stage_root
-        )
+        project = await Project.create_from_directory(prompt=PROMPT, project_dir=stage_root)
         project_id = project.project_id
         tasks, _ = await project.get_tasks(limit=1)
         if not tasks:

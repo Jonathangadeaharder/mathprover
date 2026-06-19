@@ -80,9 +80,7 @@ export async function reindexProject(
   return body.data as ProjectData | null;
 }
 
-export async function syncProject(
-  projectRoot: string,
-): Promise<{
+export async function syncProject(projectRoot: string): Promise<{
   ok: boolean;
   synced: boolean;
   build: string;
