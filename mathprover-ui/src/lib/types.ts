@@ -160,6 +160,7 @@ export interface RunRecord {
 }
 
 export type FoundationStatus = "AXIOM" | "PARTIAL" | "MECHANIZED" | "PLANNED";
+export type FoundationKind = "foundation" | "paper" | "shared";
 
 export interface FoundationSubgoal {
   id: string;
@@ -176,6 +177,9 @@ export interface Foundation {
   venue?: string;
   doi?: string;
   status: FoundationStatus;
+  kind?: FoundationKind;
+  priority?: number;
+  summary?: string;
   lean_name?: string;
   lean_file?: string;
   lean_line?: number | null;

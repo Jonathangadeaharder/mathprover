@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, project } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID } from '$lib/data';
+  import { NODES, NODE_BY_ID, FOUNDATIONS } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -29,6 +29,8 @@
 
   let provenCount = $derived(NODES.filter((n) => statusKey(n.status) === 'PROVEN').length);
   let projectName = $derived(project.data.project.name || 'MathProver');
+  let c2Count = $derived(NODES.filter((n) => n.paper_id.startsWith('C2')).length);
+  let coeaPaper = $derived(FOUNDATIONS.find((f) => f.id === 'coea_paper') ?? null);
   let dispatchError = $state<string | null>(null);
   let dispatching = $state(false);
 
@@ -71,8 +73,13 @@
     <main class="main">
       {#if app.route === 'graph'}
         <div class="pane-header">
-          <h1>Graph</h1>
-          <span class="subtle">{NODES.length} theorems · {provenCount} proven</span>
+          <div>
+            <h1>Graph</h1>
+            <span class="subtle">{NODES.length} theorems · {provenCount} proven</span>
+            {#if coeaPaper && c2Count > 0}
+              <span class="subtle">C2 = {coeaPaper.name} · paper-facing runtime assembly</span>
+            {/if}
+          </div>
         </div>
         <div class="pane-body pane-body-relative">
           <GraphView />
@@ -130,7 +137,7 @@
       {:else if app.route === 'foundations'}
         <div class="pane-header">
           <h1>Foundations</h1>
-          <span class="subtle">External results this work depends on — mechanization progress</span>
+          <span class="subtle">Top-level workstreams, shared foundations, and which paper line they support</span>
         </div>
         <div class="pane-body">
           <FoundationsView />

@@ -9,6 +9,19 @@ import { isUnderRoot, mathproverHome } from "./mathprover-home";
 import { log } from "$lib/telemetry";
 
 const PROJECT_MARKERS = ["lakefile.lean", "mathprover.toml"];
+const SYNC_META_FILES = [".mathprover/meta.json", "mathprover.toml"];
+const SYNC_DIR_EXCLUDES = new Set([
+  ".git",
+  ".lake",
+  ".worktrees",
+  "node_modules",
+  "dist",
+  "build",
+  ".mathprover/attempts",
+  ".mathprover/runs",
+  ".mathprover/telemetry",
+]);
+const SYNC_FILE_EXTS = new Set([".lean", ".tex"]);
 
 export class ProjectRootError extends Error {
   constructor(message: string) {
@@ -137,10 +150,143 @@ export function graphPath(root: string): string {
   return resolve(root, ".mathprover/graph.json");
 }
 
+function latestMtimeInTree(root: string): number {
+  let latest = 0;
+  const stack = [root];
+  while (stack.length > 0) {
+    const dir = stack.pop() as string;
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = resolve(dir, entry);
+      let st;
+      try {
+        st = statSync(full);
+      } catch {
+        continue;
+      }
+      if (st.isDirectory()) {
+        const rel = full.slice(root.length + 1).replace(/\\/g, "/");
+        if (SYNC_DIR_EXCLUDES.has(entry) || SYNC_DIR_EXCLUDES.has(rel)) continue;
+        stack.push(full);
+        continue;
+      }
+      if (SYNC_FILE_EXTS.has(full.slice(full.lastIndexOf("."))) || entry === "mathprover.toml") {
+        latest = Math.max(latest, st.mtimeMs);
+      }
+    }
+  }
+
+  for (const extra of SYNC_META_FILES) {
+    const full = resolve(root, extra);
+    if (!existsSync(full)) continue;
+    try {
+      latest = Math.max(latest, statSync(full).mtimeMs);
+    } catch {
+      /* ignore */
+    }
+  }
+  return latest;
+}
+
+function graphMtime(root: string): number {
+  try {
+    return statSync(graphPath(root)).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+export function projectGraphNeedsSync(root: string): boolean {
+  if (root.includes("test-project")) return false;
+  return latestMtimeInTree(root) > graphMtime(root);
+}
+
+export async function reindexProjectGraph(root: string): Promise<{ code: number; out: string; err: string }> {
+  const projectReindex = resolve(root, "scripts/reindex_graph.py");
+  if (existsSync(projectReindex)) {
+    return runPythonText(root, [projectReindex]);
+  }
+
+  const bootstrap = resolve(root, "scripts/bootstrap_graph.py");
+  const buildArgs = existsSync(bootstrap)
+    ? [bootstrap]
+    : ["scripts/build_graph.py", "--root", root];
+
+  const backfill = await runPythonText(root, [
+    "scripts/index_runs.py",
+    "--root",
+    root,
+    "--backfill",
+  ]);
+  if (backfill.code !== 0) return backfill;
+  return runPythonText(root, buildArgs);
+}
+
+export async function syncProject(root: string): Promise<{
+  ok: boolean;
+  synced: boolean;
+  build: string;
+  data: ProjectData | null;
+  error: string | null;
+}> {
+  const stale = projectGraphNeedsSync(root);
+  const reindex = stale ? await reindexProjectGraph(root) : null;
+  let data: ProjectData | null = null;
+  let error: string | null = null;
+  if (reindex && reindex.code !== 0) {
+    error = reindex.err.trim() || reindex.out.trim() || `reindex failed with exit code ${reindex.code}`;
+  }
+  try {
+    data = await enrichGraph(root);
+  } catch (err) {
+    error = error || (err as Error).message;
+  }
+  return {
+    ok: stale ? reindex?.code === 0 : true,
+    synced: stale,
+    build: reindex ? reindex.out.trim() || reindex.err.trim() : "",
+    data,
+    error,
+  };
+}
+
 export async function loadGraph(root: string): Promise<ProjectData> {
   const raw = await readFile(graphPath(root), "utf-8");
   const parsed = JSON.parse(raw) as Partial<ProjectData>;
-  return { ...EMPTY_PROJECT_DATA, ...parsed } as ProjectData;
+  const merged = { ...EMPTY_PROJECT_DATA, ...parsed } as ProjectData;
+  const metaPath = resolve(root, ".mathprover/meta.json");
+  if (!existsSync(metaPath)) return merged;
+
+  try {
+    const meta = JSON.parse(await readFile(metaPath, "utf-8")) as Partial<ProjectData>;
+    return {
+      ...merged,
+      ...meta,
+      project: { ...merged.project, ...(meta.project || {}) },
+      nodes: merged.nodes,
+      definitions: meta.definitions?.length ? meta.definitions : merged.definitions,
+      foundations: (meta.foundations || merged.foundations || []).map((f) => ({
+        ...f,
+        status: String(f.status || "PLANNED").toUpperCase(),
+        used_in: f.used_in || [],
+        progress_pct: f.progress_pct ?? 0,
+        description: f.description || f.summary || f.citation || "",
+        subgoals: f.subgoals || [],
+      })),
+      paperBlocks: meta.paperBlocks?.length ? meta.paperBlocks : merged.paperBlocks,
+      leanBlocks: meta.leanBlocks?.length ? meta.leanBlocks : merged.leanBlocks,
+      terms: Object.keys(meta.terms || {}).length ? meta.terms || {} : merged.terms,
+      failures: meta.failures?.length ? meta.failures : merged.failures,
+    } as ProjectData;
+  } catch (err) {
+    log.warn({ root, error: (err as Error).message }, "failed to load .mathprover/meta.json");
+    return merged;
+  }
 }
 
 export async function enrichGraph(root: string): Promise<ProjectData> {
@@ -157,6 +303,12 @@ export async function enrichGraph(root: string): Promise<ProjectData> {
     ...enriched,
     project: { ...base.project, ...enriched.project },
     nodes: enriched.nodes?.length ? enriched.nodes : base.nodes,
+    definitions: enriched.definitions?.length ? enriched.definitions : base.definitions,
+    foundations: enriched.foundations?.length ? enriched.foundations : base.foundations,
+    paperBlocks: enriched.paperBlocks?.length ? enriched.paperBlocks : base.paperBlocks,
+    leanBlocks: enriched.leanBlocks?.length ? enriched.leanBlocks : base.leanBlocks,
+    terms: Object.keys(enriched.terms || {}).length ? enriched.terms : base.terms,
+    failures: enriched.failures?.length ? enriched.failures : base.failures,
     activeAgent: enriched.activeAgent ?? base.activeAgent,
   });
 }

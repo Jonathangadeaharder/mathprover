@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import { app, project } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, FAILURES, FOUNDATIONS, DEFINITIONS } from '$lib/data';
+  import { NODES, NODE_BY_ID, FAILURES, FOUNDATIONS, DEFINITIONS, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { Route, NodeStatus } from '$lib/types';
 
@@ -32,6 +32,20 @@
     const c: Record<NodeStatus, number> = { PROVEN: 0, DISPROVEN: 0, SORRIES: 0, IN_PROGRESS: 0, STUCK: 0, DRAFT: 0, REJECTED: 0, READY: 0, BLOCKED: 0, UNEXPLORED: 0 };
     NODES.forEach((n) => { c[statusKey(n.status)]++; });
     return c;
+  });
+
+  let workstreamCounts = $derived.by(() => {
+    const counts = { paper: 0, shared: 0, foundation: 0, unscoped: 0 };
+    for (const node of NODES) {
+      const scope = primaryFoundationForNode(node.id);
+      if (!scope) {
+        counts.unscoped += 1;
+        continue;
+      }
+      const kind = scope.kind ?? 'foundation';
+      counts[kind as keyof typeof counts] += 1;
+    }
+    return counts;
   });
 
   const statusOrder: [NodeStatus, string][] = [
@@ -84,6 +98,30 @@
       </div>
     {/if}
   {/each}
+
+  <div class="section-label">Workstreams</div>
+  <div class="status-row">
+    <span class="status-dot" style="background: var(--st-proven);"></span>
+    <span class="status-label">paper-facing</span>
+    <span class="status-count">{workstreamCounts.paper}</span>
+  </div>
+  <div class="status-row">
+    <span class="status-dot" style="background: var(--st-sorries);"></span>
+    <span class="status-label">shared</span>
+    <span class="status-count">{workstreamCounts.shared}</span>
+  </div>
+  <div class="status-row">
+    <span class="status-dot" style="background: var(--fg-3);"></span>
+    <span class="status-label">foundation</span>
+    <span class="status-count">{workstreamCounts.foundation}</span>
+  </div>
+  {#if workstreamCounts.unscoped > 0}
+    <div class="status-row">
+      <span class="status-dot" style="background: var(--fg-4);"></span>
+      <span class="status-label">unscoped</span>
+      <span class="status-count">{workstreamCounts.unscoped}</span>
+    </div>
+  {/if}
 
   <div class="sidebar-footer">
     <div class="sidebar-footer-row">
