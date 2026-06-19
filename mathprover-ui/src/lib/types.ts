@@ -67,6 +67,8 @@ export interface TheoremNode {
   proof_folder?: string;
   worker_state?: "todo" | "in_progress" | "done" | string;
   sufficiencyOverride?: Record<string, EdgeSufficiency>;
+  archived?: boolean;
+  archive_reason?: string;
 }
 
 export type DefinitionKind =
@@ -145,7 +147,7 @@ export interface RunRecord {
   proof_folder: string;
   prover: string;
   route_reason: string;
-  status: "pending" | "running" | "ok" | "failed" | "error";
+  status: "pending" | "running" | "ok" | "failed" | "error" | "superseded";
   started_at: string;
   ended_at?: string | null;
   log_path: string;

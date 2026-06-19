@@ -2,14 +2,14 @@
   import StatusPill from './StatusPill.svelte';
   import Icon from './Icon.svelte';
   import { app } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, CHILDREN_BY_ID, primaryFoundationForNode } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, CHILDREN_BY_ID, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { TheoremNode } from '$lib/types';
 
   type Candidate = { node: TheoremNode; deps: TheoremNode[]; depsProven: boolean; priority: number; tractability: number };
 
   let candidates = $derived.by<Candidate[]>(() => {
-    return NODES
+    return ACTIVE_NODES
       .filter((n) => {
         const sk = statusKey(n.status);
         return sk === 'READY' || sk === 'SORRIES' || sk === 'STUCK' || sk === 'UNEXPLORED' || sk === 'DRAFT';

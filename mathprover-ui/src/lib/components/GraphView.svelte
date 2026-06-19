@@ -2,7 +2,7 @@
   import StatusPill from './StatusPill.svelte';
   import Icon from './Icon.svelte';
   import { app, tweaks } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, CHILDREN_BY_ID, activeAgent, primaryFoundationForNode } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, CHILDREN_BY_ID, activeAgent, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { TheoremNode, EdgeSufficiency } from '$lib/types';
 
@@ -195,7 +195,7 @@
   }
 
   let visibleNodes = $derived(
-    tweaks.show_proven ? NODES : NODES.filter((n) => statusKey(n.status) !== 'PROVEN')
+    tweaks.show_proven ? ACTIVE_NODES : ACTIVE_NODES.filter((n) => statusKey(n.status) !== 'PROVEN')
   );
   let positions = $derived(computeLayout(visibleNodes, tweaks.graph_layout));
 

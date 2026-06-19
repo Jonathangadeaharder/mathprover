@@ -2,7 +2,7 @@
   import Icon from './Icon.svelte';
   import StatusPill from './StatusPill.svelte';
   import { app } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, activeAgent, primaryFoundationForNode } from '$lib/data';
+  import { ACTIVE_NODES, NODE_BY_ID, activeAgent, primaryFoundationForNode } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import type { TheoremNode } from '$lib/types';
 
@@ -62,7 +62,7 @@
   let lanes = $derived.by(() => {
     const memo: Record<string, number> = {};
     const groups: Record<string, TheoremNode[]> = {};
-    for (const node of NODES) {
+    for (const node of ACTIVE_NODES) {
       const depth = depthOf(node, memo);
       const scope = scopeOf(node);
       const key = `${depth}::${scope}`;

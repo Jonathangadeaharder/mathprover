@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, project } from '$lib/stores.svelte';
-  import { NODES, NODE_BY_ID, FOUNDATIONS } from '$lib/data';
+  import { ACTIVE_NODES, NODES, NODE_BY_ID, FOUNDATIONS } from '$lib/data';
   import { statusKey } from '$lib/lean';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -27,9 +27,9 @@
     if (!app.projectRoot) goto('/');
   });
 
-  let provenCount = $derived(NODES.filter((n) => statusKey(n.status) === 'PROVEN').length);
+  let provenCount = $derived(ACTIVE_NODES.filter((n) => statusKey(n.status) === 'PROVEN').length);
   let projectName = $derived(project.data.project.name || 'MathProver');
-  let c2Count = $derived(NODES.filter((n) => n.paper_id.startsWith('C2')).length);
+  let c2Count = $derived(ACTIVE_NODES.filter((n) => n.paper_id.startsWith('C2')).length);
   let coeaPaper = $derived(FOUNDATIONS.find((f) => f.id === 'coea_paper') ?? null);
   let dispatchError = $state<string | null>(null);
   let dispatching = $state(false);
@@ -75,7 +75,7 @@
         <div class="pane-header">
           <div>
             <h1>Graph</h1>
-            <span class="subtle">{NODES.length} theorems · {provenCount} proven</span>
+            <span class="subtle">{ACTIVE_NODES.length} active theorems · {provenCount} proven · {NODES.length - ACTIVE_NODES.length} archived</span>
             {#if coeaPaper && c2Count > 0}
               <span class="subtle">C2 = {coeaPaper.name} · paper-facing runtime assembly</span>
             {/if}

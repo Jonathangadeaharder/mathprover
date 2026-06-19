@@ -60,7 +60,12 @@ function recordProxy<V>(getter: () => Record<string, V>): Record<string, V> {
   });
 }
 
+export function isArchivedNode(node: TheoremNode): boolean {
+  return Boolean(node.archived || ["merged", "superseded"].includes(node.worker_state || ""));
+}
+
 export const NODES: TheoremNode[] = arrayProxy(() => d().nodes);
+export const ACTIVE_NODES: TheoremNode[] = arrayProxy(() => d().nodes.filter((n) => !isArchivedNode(n)));
 export const DEFINITIONS: Definition[] = arrayProxy(() => d().definitions);
 export const FOUNDATIONS: Foundation[] = arrayProxy(() => d().foundations);
 export const FAILURES: Failure[] = arrayProxy(() => d().failures);
