@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: 22
       - run: corepack enable && pnpm install --frozen-lockfile
-      - run: pnpm dlx prettier --check .
+      - run: pnpm exec prettier --check .
 
   ui-typecheck:
     name: UI Type Check

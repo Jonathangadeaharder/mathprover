@@ -1,2 +1,2 @@
 - button "Tweaks" [ref=e3] [cursor=pointer]:
-  - img [ref=e4]
+    - img [ref=e4]
