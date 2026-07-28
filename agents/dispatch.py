@@ -30,6 +30,22 @@ from run_registry import (  # noqa: E402
     write_run,
 )
 
+# Exit code for a run whose cloud task outlived the local poll cap.
+# Distinct from failure so an orchestrator re-attaches instead of retrying.
+EXIT_PENDING = 2
+
+
+def run_outcome(*, ok: bool, pending: bool) -> tuple[str, str, str | None, int]:
+    """Map a finished dispatch to (run status, run result, ended_at, exit code).
+
+    A pending run has not ended, so it carries no `ended_at` and its own exit code.
+    """
+    if pending:
+        return "running", "RUNNING", None, EXIT_PENDING
+    if ok:
+        return "ok", "PROVEN", utc_now(), 0
+    return "failed", "FAILED", utc_now(), 1
+
 _NODE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -266,9 +282,7 @@ def dispatch_with_config(
         if not pending:
             bump_graph_attempts(root, folder, prover_name, ok)
 
-        run.status = "running" if pending else ("ok" if ok else "failed")
-        run.ended_at = utc_now()
-        run.result = "RUNNING" if pending else ("PROVEN" if ok else "FAILED")
+        run.status, run.result, run.ended_at, exit_code = run_outcome(ok=ok, pending=bool(pending))
         run.verify_ok = verify_ok
         run.message = result.message
         write_run(root, run)
@@ -276,7 +290,7 @@ def dispatch_with_config(
 
         print(result.message)
         print(f"verify={'ok' if verify_ok else 'failed'}")
-        return 0 if ok else 1
+        return exit_code
     except Exception as exc:
         run.status = "error"
         run.ended_at = utc_now()
