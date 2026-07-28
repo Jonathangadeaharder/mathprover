@@ -155,7 +155,8 @@ async def _run_aristotle_async(
                 # tell the caller how to re-attach so a long run is never abandoned.
                 reattach_cmd = (
                     f"python3 agents/aristotle_attach.py --project-id {project_id} "
-                    f"--task-id {task.agent_task_id} --node {_traj_node} --wait"
+                    f"--task-id {task.agent_task_id} --node {_traj_node} "
+                    f"--project-root {project_root} --wait"
                 )
                 msg = (
                     f"local poll stopped after {config.max_wait_minutes} min. "

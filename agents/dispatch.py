@@ -30,9 +30,10 @@ from run_registry import (  # noqa: E402
     write_run,
 )
 
-# Exit code for a run whose cloud task outlived the local poll cap.
-# Distinct from failure so an orchestrator re-attaches instead of retrying.
-EXIT_PENDING = 2
+# Exit code for a run whose cloud task outlived the local poll cap, so an
+# orchestrator re-attaches instead of retrying.
+# 0 ok, 1 failed, 2 dispatch error and 3 refuted are already taken.
+EXIT_PENDING = 75
 
 
 def run_outcome(*, ok: bool, pending: bool) -> tuple[str, str, str | None, int]:
