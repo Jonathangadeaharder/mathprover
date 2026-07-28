@@ -29,6 +29,8 @@ class RunResult:
     output_path: Path | None
     message: str
     project_id: str | None = None
+    # Set when the local poll cap expired while the cloud task kept running. Not a failure.
+    pending_reattach: str | None = None
 
 
 def preflight(config: ProverConfig) -> None:
@@ -165,6 +167,10 @@ async def _run_aristotle_async(
                     output_path=log_path,
                     message=msg,
                     project_id=project_id,
+                    pending_reattach=(
+                        f"python3 agents/aristotle_attach.py --project-id {project_id} "
+                        f"--task-id {task.agent_task_id} --node <FOLDER> --wait"
+                    ),
                 )
             await project.refresh()
             log.write(f"final_status={task.status.name}\n")

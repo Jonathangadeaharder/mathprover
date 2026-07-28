@@ -124,14 +124,29 @@ def verify_build(project_root: Path, log_path: Path) -> tuple[bool, str]:
     return proc.returncode == 0, proc.stdout or ""
 
 
-def append_status(proof_dir: Path, *, prover: str, ok: bool, log_rel: str) -> None:
+def append_status(
+    proof_dir: Path, *, prover: str, ok: bool, log_rel: str, pending: str | None = None
+) -> None:
+    """Record a run outcome in the node's status.md.
+
+    `pending` carries the re-attach command when the local poll cap expired while the cloud
+    task was still running. That is not a proof failure and must never be written as one.
+    """
     status = proof_dir / "status.md"
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    line = f"\n- [{stamp}] {prover}: {'ok' if ok else 'failed'} — log `{log_rel}`\n"
+    if pending:
+        line = (
+            f"\n- [{stamp}] {prover}: running. Local poll cap expired, cloud task still "
+            f"running. Log `{log_rel}`. Re-attach with: `{pending}`\n"
+        )
+        state = "running"
+    else:
+        line = f"\n- [{stamp}] {prover}: {'ok' if ok else 'failed'}. Log `{log_rel}`\n"
+        state = "done" if ok else "todo"
     if status.exists():
         status.write_text(status.read_text(encoding="utf-8") + line, encoding="utf-8")
     else:
-        status.write_text(f"state: {'done' if ok else 'todo'}\n{line}", encoding="utf-8")
+        status.write_text(f"state: {state}\n{line}", encoding="utf-8")
 
 
 def bump_graph_attempts(project_root: Path, folder: str, prover: str, ok: bool) -> None:
@@ -246,12 +261,14 @@ def dispatch_with_config(
                     log.write(final_gate_message + "\n")
 
         ok = result.success and verify_ok
-        append_status(proof_dir, prover=prover_name, ok=ok, log_rel=log_rel)
-        bump_graph_attempts(root, folder, prover_name, ok)
+        pending = getattr(result, "pending_reattach", None)
+        append_status(proof_dir, prover=prover_name, ok=ok, log_rel=log_rel, pending=pending)
+        if not pending:
+            bump_graph_attempts(root, folder, prover_name, ok)
 
-        run.status = "ok" if ok else "failed"
+        run.status = "running" if pending else ("ok" if ok else "failed")
         run.ended_at = utc_now()
-        run.result = "PROVEN" if ok else "FAILED"
+        run.result = "RUNNING" if pending else ("PROVEN" if ok else "FAILED")
         run.verify_ok = verify_ok
         run.message = result.message
         write_run(root, run)
