@@ -160,16 +160,29 @@ def _retarget_state_header(text: str, state: str) -> str:
 
 
 def append_status(
-    proof_dir: Path, *, prover: str, ok: bool, log_rel: str, pending: str | None = None
+    proof_dir: Path,
+    *,
+    prover: str,
+    ok: bool,
+    log_rel: str,
+    pending: str | None = None,
+    dispatch_error: str | None = None,
 ) -> None:
     """Record a run outcome in the node's status.md.
 
     `pending` carries the re-attach command when the local poll cap expired while the cloud
-    task was still running. That is not a proof failure and must never be written as one.
+    task was still running. `dispatch_error` carries the transport failure when the prover
+    never ran at all. Neither is a proof failure and neither may be written as one.
     """
     status = proof_dir / "status.md"
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    if pending:
+    if dispatch_error:
+        line = (
+            f"\n- [{stamp}] {prover}: dispatch error, the prover never ran. "
+            f"{dispatch_error}. Log `{log_rel}`\n"
+        )
+        state = "todo"
+    elif pending:
         line = (
             f"\n- [{stamp}] {prover}: running. Local poll cap expired, cloud task still "
             f"running. Log `{log_rel}`. Re-attach with: `{pending}`\n"
@@ -289,11 +302,12 @@ def dispatch_with_config(
             raise ValueError(f"Unsupported prover type {prover_cfg.type!r} for {prover_name!r}")
 
         pending = getattr(result, "pending_reattach", None)
+        dispatch_error = getattr(result, "dispatch_error", None)
         verify_ok = True
         final_gate_message = ""
         # A pending cloud task has produced no proof yet, so `lake build` would cost minutes
         # to verify a tree the run never touched.
-        if not skip_verify and not pending:
+        if not skip_verify and not pending and not dispatch_error:
             verify_ok, _ = verify_build(root, log_path)
             if verify_ok and result.success:
                 verify_ok, final_gate_message = final_verify_attempt(
@@ -305,8 +319,15 @@ def dispatch_with_config(
                     log.write(final_gate_message + "\n")
 
         ok = result.success and verify_ok
-        append_status(proof_dir, prover=prover_name, ok=ok, log_rel=log_rel, pending=pending)
-        if not pending:
+        append_status(
+            proof_dir,
+            prover=prover_name,
+            ok=ok,
+            log_rel=log_rel,
+            pending=pending,
+            dispatch_error=dispatch_error,
+        )
+        if not pending and not dispatch_error:
             bump_graph_attempts(root, folder, prover_name, ok)
 
         run.status, run.result, run.ended_at, exit_code = run_outcome(ok=ok, pending=bool(pending))

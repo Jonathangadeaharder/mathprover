@@ -61,3 +61,25 @@ def test_non_pending_leaves_an_existing_header_alone(tmp_path: Path) -> None:
     (tmp_path / "status.md").write_text("state: PROVEN\n", encoding="utf-8")
     append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt")
     assert (tmp_path / "status.md").read_text(encoding="utf-8").startswith("state: PROVEN")
+
+
+def test_dispatch_error_is_not_a_proof_failure(tmp_path: Path) -> None:
+    # A 502 at submit time means the prover never ran; the node is untouched.
+    (tmp_path / "status.md").write_text("state: todo\n", encoding="utf-8")
+    append_status(
+        tmp_path,
+        prover="aristotle",
+        ok=False,
+        log_rel="log.txt",
+        dispatch_error="Request failed: 502 Server Error",
+    )
+    text = (tmp_path / "status.md").read_text(encoding="utf-8")
+    assert "aristotle: failed" not in text
+    assert "dispatch error" in text
+    assert "502" in text
+
+
+def test_dispatch_error_leaves_a_proved_node_proved(tmp_path: Path) -> None:
+    (tmp_path / "status.md").write_text("state: PROVEN\n", encoding="utf-8")
+    append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt", dispatch_error="boom")
+    assert (tmp_path / "status.md").read_text(encoding="utf-8").startswith("state: PROVEN")

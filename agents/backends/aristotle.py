@@ -32,6 +32,8 @@ class RunResult:
     project_id: str | None = None
     # Set when the local poll cap expired while the cloud task kept running. Not a failure.
     pending_reattach: str | None = None
+    # Set when the prover never ran (transport or submit failure). Not a proof failure.
+    dispatch_error: str | None = None
 
 
 def preflight(config: ProverConfig) -> None:
@@ -300,4 +302,5 @@ def run_aristotle(
             log_path=log_path,
             output_path=log_path,
             message=f"aristotle failed: {exc}",
+            dispatch_error=str(exc) or exc.__class__.__name__,
         )
