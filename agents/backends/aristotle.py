@@ -155,8 +155,10 @@ async def _run_aristotle_async(
                 # Client-side poll cap only: the CLOUD task keeps running. Do NOT imply it died;
                 # tell the caller how to re-attach so a long run is never abandoned.
                 reattach_cmd = (
-                    f"python3 agents/aristotle_attach.py --project-id {project_id} "
-                    f"--task-id {task.agent_task_id} --node {shlex.quote(_traj_node)} "
+                    f"python3 agents/aristotle_attach.py "
+                    f"--project-id {shlex.quote(str(project_id))} "
+                    f"--task-id {shlex.quote(str(task.agent_task_id))} "
+                    f"--node {shlex.quote(_traj_node)} "
                     f"--project-root {shlex.quote(str(project_root))} --wait"
                 )
                 msg = (

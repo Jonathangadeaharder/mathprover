@@ -44,3 +44,20 @@ def test_pending_does_not_overwrite_an_existing_state(tmp_path: Path) -> None:
     assert text.startswith("state: PROVEN")
     assert "failed" not in text
     assert "reattach cmd" in text
+
+
+def test_pending_rewrites_a_stale_state_header(tmp_path: Path) -> None:
+    # scripts/build_graph.py reads only `^state:`, so a stale header hides a pending run.
+    (tmp_path / "status.md").write_text("state: todo\n\nsome notes\n", encoding="utf-8")
+    append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt", pending="reattach cmd")
+    text = (tmp_path / "status.md").read_text(encoding="utf-8")
+    assert text.startswith("state: running")
+    assert "state: todo" not in text
+    assert "some notes" in text
+    assert "reattach cmd" in text
+
+
+def test_non_pending_leaves_an_existing_header_alone(tmp_path: Path) -> None:
+    (tmp_path / "status.md").write_text("state: PROVEN\n", encoding="utf-8")
+    append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt")
+    assert (tmp_path / "status.md").read_text(encoding="utf-8").startswith("state: PROVEN")

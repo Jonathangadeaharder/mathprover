@@ -142,6 +142,23 @@ def verify_build(project_root: Path, log_path: Path) -> tuple[bool, str]:
     return proc.returncode == 0, proc.stdout or ""
 
 
+_TERMINAL_STATES = {"done", "proven", "merged", "retired", "solved"}
+
+
+def _retarget_state_header(text: str, state: str) -> str:
+    """Rewrite a non-terminal `state:` header, leaving terminal ones untouched."""
+    lines = text.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if not line.startswith("state:"):
+            continue
+        current = line[len("state:") :].strip().split()
+        if current and current[0].lower().rstrip(",;.") in _TERMINAL_STATES:
+            return text
+        lines[i] = f"state: {state}\n"
+        return "".join(lines)
+    return f"state: {state}\n" + text
+
+
 def append_status(
     proof_dir: Path, *, prover: str, ok: bool, log_rel: str, pending: str | None = None
 ) -> None:
@@ -161,10 +178,16 @@ def append_status(
     else:
         line = f"\n- [{stamp}] {prover}: {'ok' if ok else 'failed'}. Log `{log_rel}`\n"
         state = "done" if ok else "todo"
-    if status.exists():
-        status.write_text(status.read_text(encoding="utf-8") + line, encoding="utf-8")
-    else:
+    if not status.exists():
         status.write_text(f"state: {state}\n{line}", encoding="utf-8")
+        return
+    text = status.read_text(encoding="utf-8") + line
+    # scripts/build_graph.py reads only the `state:` header, so a pending run left under a
+    # stale `todo` is invisible to the graph. Terminal states are facts about the node and
+    # are never overwritten by a run in flight.
+    if pending:
+        text = _retarget_state_header(text, "running")
+    status.write_text(text, encoding="utf-8")
 
 
 def bump_graph_attempts(project_root: Path, folder: str, prover: str, ok: bool) -> None:
@@ -287,7 +310,8 @@ def dispatch_with_config(
             bump_graph_attempts(root, folder, prover_name, ok)
 
         run.status, run.result, run.ended_at, exit_code = run_outcome(ok=ok, pending=bool(pending))
-        run.verify_ok = verify_ok
+        # No verification runs for a pending task, so do not record a verdict.
+        run.verify_ok = None if pending else verify_ok
         run.message = result.message
         write_run(root, run)
         set_graph_active_agent(root, run=None)
