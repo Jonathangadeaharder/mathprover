@@ -46,6 +46,7 @@ def run_outcome(*, ok: bool, pending: bool) -> tuple[str, str, str | None, int]:
         return "ok", "PROVEN", utc_now(), 0
     return "failed", "FAILED", utc_now(), 1
 
+
 _NODE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 

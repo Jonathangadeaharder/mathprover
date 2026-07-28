@@ -1,0 +1,5 @@
+# esbuild ships a prebuilt binary and needs its postinstall to run.
+# pnpm 10+ blocks build scripts by default, which made `pnpm install --frozen-lockfile`
+# exit 1 with ERR_PNPM_IGNORED_BUILDS and failed every UI job in the PR gate.
+allowBuilds:
+  esbuild: true
