@@ -265,9 +265,12 @@ def dispatch_with_config(
         else:
             raise ValueError(f"Unsupported prover type {prover_cfg.type!r} for {prover_name!r}")
 
+        pending = getattr(result, "pending_reattach", None)
         verify_ok = True
         final_gate_message = ""
-        if not skip_verify:
+        # A pending cloud task has produced no proof yet, so `lake build` would cost minutes
+        # to verify a tree the run never touched.
+        if not skip_verify and not pending:
             verify_ok, _ = verify_build(root, log_path)
             if verify_ok and result.success:
                 verify_ok, final_gate_message = final_verify_attempt(
@@ -279,7 +282,6 @@ def dispatch_with_config(
                     log.write(final_gate_message + "\n")
 
         ok = result.success and verify_ok
-        pending = getattr(result, "pending_reattach", None)
         append_status(proof_dir, prover=prover_name, ok=ok, log_rel=log_rel, pending=pending)
         if not pending:
             bump_graph_attempts(root, folder, prover_name, ok)

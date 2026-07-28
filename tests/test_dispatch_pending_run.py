@@ -9,7 +9,8 @@ import dispatch  # noqa: E402
 
 
 def test_pending_exit_code_differs_from_success_and_failure() -> None:
-    assert dispatch.EXIT_PENDING not in (0, 1)
+    # 0 ok, 1 failed, 2 dispatch error, 3 refuted are all already in use.
+    assert dispatch.EXIT_PENDING not in (0, 1, 2, 3)
 
 
 def test_pending_run_is_not_marked_ended() -> None:
