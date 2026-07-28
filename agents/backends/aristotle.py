@@ -151,13 +151,16 @@ async def _run_aristotle_async(
                     timeout=config.max_wait_minutes * 60,
                 )
             except asyncio.TimeoutError:
-                # Client-side poll cap only — the CLOUD task keeps running. Do NOT imply it died;
+                # Client-side poll cap only: the CLOUD task keeps running. Do NOT imply it died;
                 # tell the caller how to re-attach so a long run is never abandoned.
-                msg = (
-                    f"local poll stopped after {config.max_wait_minutes} min — "
-                    f"Aristotle task is STILL RUNNING in the cloud (not cancelled). Re-attach with: "
+                reattach_cmd = (
                     f"python3 agents/aristotle_attach.py --project-id {project_id} "
-                    f"--task-id {task.agent_task_id} --node <FOLDER> --wait"
+                    f"--task-id {task.agent_task_id} --node {_traj_node} --wait"
+                )
+                msg = (
+                    f"local poll stopped after {config.max_wait_minutes} min. "
+                    f"Aristotle task is STILL RUNNING in the cloud (not cancelled). "
+                    f"Re-attach with: {reattach_cmd}"
                 )
                 log.write(msg + "\n")
                 return RunResult(
@@ -167,10 +170,7 @@ async def _run_aristotle_async(
                     output_path=log_path,
                     message=msg,
                     project_id=project_id,
-                    pending_reattach=(
-                        f"python3 agents/aristotle_attach.py --project-id {project_id} "
-                        f"--task-id {task.agent_task_id} --node <FOLDER> --wait"
-                    ),
+                    pending_reattach=reattach_cmd,
                 )
             await project.refresh()
             log.write(f"final_status={task.status.name}\n")
