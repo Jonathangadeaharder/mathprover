@@ -147,17 +147,19 @@ def verify_build(project_root: Path, log_path: Path) -> tuple[bool, str]:
     return proc.returncode == 0, proc.stdout or ""
 
 
-_TERMINAL_STATES = {"done", "proven", "merged", "retired", "solved"}
+# The dispatcher may rewrite only the headers it writes itself: a terminal state is a
+# fact about the node, and a hand-written header carries information.
+_DISPATCHER_STATES = {"todo", "running", "done", "dispatched"}
 
 
 def _retarget_state_header(text: str, state: str) -> str:
-    """Rewrite a non-terminal `state:` header, leaving terminal ones untouched."""
+    """Rewrite a `state:` header the dispatcher owns, leaving every other one untouched."""
     lines = text.splitlines(keepends=True)
     for i, line in enumerate(lines):
         if not line.startswith("state:"):
             continue
-        current = line[len("state:") :].strip().split()
-        if current and current[0].lower().rstrip(",;.") in _TERMINAL_STATES:
+        current = line[len("state:") :].strip()
+        if current.lower().rstrip(",;.") not in _DISPATCHER_STATES:
             return text
         lines[i] = f"state: {state}\n"
         return "".join(lines)
@@ -200,14 +202,10 @@ def append_status(
         status.write_text(f"state: {state}\n{line}", encoding="utf-8")
         return
     text = status.read_text(encoding="utf-8") + line
-    # scripts/build_graph.py reads only the `state:` header, so a pending run left under a
-    # stale `todo` is invisible to the graph. Terminal states are facts about the node and
-    # are never overwritten by a run in flight.
-    if pending:
-        text = _retarget_state_header(text, "running")
-    elif dispatch_error:
-        # No cloud task is alive, so a header left `running` by an earlier pending run is stale.
-        text = _retarget_state_header(text, "todo")
+    # scripts/build_graph.py reads only the `state:` header, so every outcome refreshes it:
+    # a pending run must not hide under a stale `todo`, and a concluded run must not leave
+    # `running` behind.
+    text = _retarget_state_header(text, "todo" if dispatch_error else state)
     status.write_text(text, encoding="utf-8")
 
 

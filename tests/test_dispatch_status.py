@@ -108,3 +108,28 @@ def test_pending_line_carries_a_runnable_reattach_command(tmp_path: Path) -> Non
     text = (tmp_path / "status.md").read_text(encoding="utf-8")
     assert "uv run python aristotle_attach.py" in text
     assert "python3 agents/aristotle_attach.py" not in text
+
+
+def test_completed_run_clears_a_stale_running_header(tmp_path: Path) -> None:
+    # Left `running` by an earlier pending run that has since concluded.
+    (tmp_path / "status.md").write_text("state: running\n\nnotes\n", encoding="utf-8")
+    append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt")
+    text = (tmp_path / "status.md").read_text(encoding="utf-8")
+    assert text.startswith("state: todo")
+    assert "notes" in text
+
+
+def test_success_clears_a_stale_running_header(tmp_path: Path) -> None:
+    (tmp_path / "status.md").write_text("state: running\n", encoding="utf-8")
+    append_status(tmp_path, prover="aristotle", ok=True, log_rel="log.txt")
+    assert (tmp_path / "status.md").read_text(encoding="utf-8").startswith("state: done")
+
+
+def test_a_hand_written_header_is_never_rewritten(tmp_path: Path) -> None:
+    # Only the four states the dispatcher itself writes are safe to retarget.
+    (tmp_path / "status.md").write_text(
+        "state: partly proved, runtime bound open\n", encoding="utf-8"
+    )
+    append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt")
+    text = (tmp_path / "status.md").read_text(encoding="utf-8")
+    assert text.startswith("state: partly proved, runtime bound open")
