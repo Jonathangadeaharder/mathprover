@@ -12,8 +12,10 @@ With --wait, the downloaded proof is written to the node's attempt.lean ONLY if 
 gate: no forbidden placeholders, compiles, and (best-effort) axiom-clean.
 
 Usage:
-  python3 aristotle_attach.py --project-id <PID> [--task-id <TID>] \
+  cd agents && uv run python aristotle_attach.py --project-id <PID> [--task-id <TID>] \
       --node <FOLDER> --project-root ~/projects/lean-runtime-analysis [--wait]
+
+`uv run` is required: aristotlelib lives in the agents venv, not in the ambient interpreter.
 """
 
 from __future__ import annotations

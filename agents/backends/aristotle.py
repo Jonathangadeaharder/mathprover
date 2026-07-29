@@ -154,10 +154,11 @@ async def _run_aristotle_async(
                     timeout=config.max_wait_minutes * 60,
                 )
             except asyncio.TimeoutError:
-                # Client-side poll cap only: the CLOUD task keeps running. Do NOT imply it died;
-                # tell the caller how to re-attach so a long run is never abandoned.
+                # Client-side poll cap only: the CLOUD task keeps running, so tell the
+                # caller how to re-attach. `uv run` is required because aristotlelib lives
+                # in the agents venv, not in the ambient python3.
                 reattach_cmd = (
-                    f"python3 agents/aristotle_attach.py "
+                    f"cd agents && uv run python aristotle_attach.py "
                     f"--project-id {shlex.quote(str(project_id))} "
                     f"--task-id {shlex.quote(str(task.agent_task_id))} "
                     f"--node {shlex.quote(_traj_node)} "

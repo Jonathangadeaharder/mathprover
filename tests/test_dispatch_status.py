@@ -93,3 +93,18 @@ def test_dispatch_error_clears_a_stale_running_header(tmp_path: Path) -> None:
     text = (tmp_path / "status.md").read_text(encoding="utf-8")
     assert text.startswith("state: todo")
     assert "notes" in text
+
+
+def test_pending_line_carries_a_runnable_reattach_command(tmp_path: Path) -> None:
+    # The printed command is the only way back to a run that outlived the poll
+    # cap. `python3` alone cannot import aristotlelib.
+    append_status(
+        tmp_path,
+        prover="aristotle",
+        ok=False,
+        log_rel="log.txt",
+        pending="cd agents && uv run python aristotle_attach.py --project-id P --wait",
+    )
+    text = (tmp_path / "status.md").read_text(encoding="utf-8")
+    assert "uv run python aristotle_attach.py" in text
+    assert "python3 agents/aristotle_attach.py" not in text
