@@ -83,3 +83,13 @@ def test_dispatch_error_leaves_a_proved_node_proved(tmp_path: Path) -> None:
     (tmp_path / "status.md").write_text("state: PROVEN\n", encoding="utf-8")
     append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt", dispatch_error="boom")
     assert (tmp_path / "status.md").read_text(encoding="utf-8").startswith("state: PROVEN")
+
+
+def test_dispatch_error_clears_a_stale_running_header(tmp_path: Path) -> None:
+    # Left `running` by an earlier pending run. No cloud task is alive after a
+    # submit failure.
+    (tmp_path / "status.md").write_text("state: running\n\nnotes\n", encoding="utf-8")
+    append_status(tmp_path, prover="aristotle", ok=False, log_rel="log.txt", dispatch_error="502")
+    text = (tmp_path / "status.md").read_text(encoding="utf-8")
+    assert text.startswith("state: todo")
+    assert "notes" in text

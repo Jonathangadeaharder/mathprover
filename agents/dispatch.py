@@ -36,13 +36,18 @@ from run_registry import (  # noqa: E402
 EXIT_PENDING = 75
 
 
-def run_outcome(*, ok: bool, pending: bool) -> tuple[str, str, str | None, int]:
+def run_outcome(
+    *, ok: bool, pending: bool, dispatch_error: bool = False
+) -> tuple[str, str, str | None, int]:
     """Map a finished dispatch to (run status, run result, ended_at, exit code).
 
-    A pending run has not ended, so it carries no `ended_at` and its own exit code.
+    A pending run has not ended, so it carries no `ended_at` and its own exit code. A dispatch
+    error is an error, not a proof failure, and reuses main()'s error code 2.
     """
     if pending:
         return "running", "RUNNING", None, EXIT_PENDING
+    if dispatch_error:
+        return "error", "DISPATCH_ERROR", utc_now(), 2
     if ok:
         return "ok", "PROVEN", utc_now(), 0
     return "failed", "FAILED", utc_now(), 1
@@ -200,6 +205,9 @@ def append_status(
     # are never overwritten by a run in flight.
     if pending:
         text = _retarget_state_header(text, "running")
+    elif dispatch_error:
+        # No cloud task is alive, so a header left `running` by an earlier pending run is stale.
+        text = _retarget_state_header(text, "todo")
     status.write_text(text, encoding="utf-8")
 
 
@@ -330,7 +338,9 @@ def dispatch_with_config(
         if not pending and not dispatch_error:
             bump_graph_attempts(root, folder, prover_name, ok)
 
-        run.status, run.result, run.ended_at, exit_code = run_outcome(ok=ok, pending=bool(pending))
+        run.status, run.result, run.ended_at, exit_code = run_outcome(
+            ok=ok, pending=bool(pending), dispatch_error=bool(dispatch_error)
+        )
         # No verification runs for a pending task, so do not record a verdict.
         run.verify_ok = None if pending else verify_ok
         run.message = result.message
@@ -338,7 +348,10 @@ def dispatch_with_config(
         set_graph_active_agent(root, run=None)
 
         print(result.message)
-        print(f"verify={'ok' if verify_ok else 'failed'}")
+        verify_label = (
+            "skipped" if (pending or dispatch_error) else ("ok" if verify_ok else "failed")
+        )
+        print(f"verify={verify_label}")
         return exit_code
     except Exception as exc:
         run.status = "error"
