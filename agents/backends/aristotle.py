@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import shlex
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -29,6 +30,10 @@ class RunResult:
     output_path: Path | None
     message: str
     project_id: str | None = None
+    # Set when the local poll cap expired while the cloud task kept running. Not a failure.
+    pending_reattach: str | None = None
+    # Set when the prover never ran (transport or submit failure). Not a proof failure.
+    dispatch_error: str | None = None
 
 
 def preflight(config: ProverConfig) -> None:
@@ -149,13 +154,20 @@ async def _run_aristotle_async(
                     timeout=config.max_wait_minutes * 60,
                 )
             except asyncio.TimeoutError:
-                # Client-side poll cap only — the CLOUD task keeps running. Do NOT imply it died;
-                # tell the caller how to re-attach so a long run is never abandoned.
+                # Client-side poll cap only: the CLOUD task keeps running, so tell the
+                # caller how to re-attach. `uv run` is required because aristotlelib lives
+                # in the agents venv, not in the ambient python3.
+                reattach_cmd = (
+                    f"cd agents && uv run python aristotle_attach.py "
+                    f"--project-id {shlex.quote(str(project_id))} "
+                    f"--task-id {shlex.quote(str(task.agent_task_id))} "
+                    f"--node {shlex.quote(_traj_node)} "
+                    f"--project-root {shlex.quote(str(project_root))} --wait"
+                )
                 msg = (
-                    f"local poll stopped after {config.max_wait_minutes} min — "
-                    f"Aristotle task is STILL RUNNING in the cloud (not cancelled). Re-attach with: "
-                    f"python3 agents/aristotle_attach.py --project-id {project_id} "
-                    f"--task-id {task.agent_task_id} --node <FOLDER> --wait"
+                    f"local poll stopped after {config.max_wait_minutes} min. "
+                    f"Aristotle task is STILL RUNNING in the cloud (not cancelled). "
+                    f"Re-attach with: {reattach_cmd}"
                 )
                 log.write(msg + "\n")
                 return RunResult(
@@ -165,6 +177,7 @@ async def _run_aristotle_async(
                     output_path=log_path,
                     message=msg,
                     project_id=project_id,
+                    pending_reattach=reattach_cmd,
                 )
             await project.refresh()
             log.write(f"final_status={task.status.name}\n")
@@ -290,4 +303,5 @@ def run_aristotle(
             log_path=log_path,
             output_path=log_path,
             message=f"aristotle failed: {exc}",
+            dispatch_error=str(exc) or exc.__class__.__name__,
         )

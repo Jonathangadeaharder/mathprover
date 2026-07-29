@@ -30,6 +30,29 @@ from run_registry import (  # noqa: E402
     write_run,
 )
 
+# Exit code for a run whose cloud task outlived the local poll cap, so an
+# orchestrator re-attaches instead of retrying.
+# 0 ok, 1 failed, 2 dispatch error and 3 refuted are already taken.
+EXIT_PENDING = 75
+
+
+def run_outcome(
+    *, ok: bool, pending: bool, dispatch_error: bool = False
+) -> tuple[str, str, str | None, int]:
+    """Map a finished dispatch to (run status, run result, ended_at, exit code).
+
+    A pending run has not ended, so it carries no `ended_at` and its own exit code. A dispatch
+    error is an error, not a proof failure, and reuses main()'s error code 2.
+    """
+    if pending:
+        return "running", "RUNNING", None, EXIT_PENDING
+    if dispatch_error:
+        return "error", "DISPATCH_ERROR", utc_now(), 2
+    if ok:
+        return "ok", "PROVEN", utc_now(), 0
+    return "failed", "FAILED", utc_now(), 1
+
+
 _NODE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -124,14 +147,66 @@ def verify_build(project_root: Path, log_path: Path) -> tuple[bool, str]:
     return proc.returncode == 0, proc.stdout or ""
 
 
-def append_status(proof_dir: Path, *, prover: str, ok: bool, log_rel: str) -> None:
+# The dispatcher may rewrite only the headers it writes itself: a terminal state is a
+# fact about the node, and a hand-written header carries information.
+_DISPATCHER_STATES = {"todo", "running", "done", "dispatched"}
+
+
+def _retarget_state_header(text: str, state: str) -> str:
+    """Rewrite a `state:` header the dispatcher owns, leaving every other one untouched."""
+    lines = text.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if not line.startswith("state:"):
+            continue
+        current = line[len("state:") :].strip()
+        if current.lower().rstrip(",;.") not in _DISPATCHER_STATES:
+            return text
+        lines[i] = f"state: {state}\n"
+        return "".join(lines)
+    return f"state: {state}\n" + text
+
+
+def append_status(
+    proof_dir: Path,
+    *,
+    prover: str,
+    ok: bool,
+    log_rel: str,
+    pending: str | None = None,
+    dispatch_error: str | None = None,
+) -> None:
+    """Record a run outcome in the node's status.md.
+
+    `pending` carries the re-attach command when the local poll cap expired while the cloud
+    task was still running. `dispatch_error` carries the transport failure when the prover
+    never ran at all. Neither is a proof failure and neither may be written as one.
+    """
     status = proof_dir / "status.md"
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    line = f"\n- [{stamp}] {prover}: {'ok' if ok else 'failed'} — log `{log_rel}`\n"
-    if status.exists():
-        status.write_text(status.read_text(encoding="utf-8") + line, encoding="utf-8")
+    if dispatch_error:
+        line = (
+            f"\n- [{stamp}] {prover}: dispatch error, the prover never ran. "
+            f"{dispatch_error}. Log `{log_rel}`\n"
+        )
+        state = "todo"
+    elif pending:
+        line = (
+            f"\n- [{stamp}] {prover}: running. Local poll cap expired, cloud task still "
+            f"running. Log `{log_rel}`. Re-attach with: `{pending}`\n"
+        )
+        state = "running"
     else:
-        status.write_text(f"state: {'done' if ok else 'todo'}\n{line}", encoding="utf-8")
+        line = f"\n- [{stamp}] {prover}: {'ok' if ok else 'failed'}. Log `{log_rel}`\n"
+        state = "done" if ok else "todo"
+    if not status.exists():
+        status.write_text(f"state: {state}\n{line}", encoding="utf-8")
+        return
+    text = status.read_text(encoding="utf-8") + line
+    # scripts/build_graph.py reads only the `state:` header, so every outcome refreshes it:
+    # a pending run must not hide under a stale `todo`, and a concluded run must not leave
+    # `running` behind.
+    text = _retarget_state_header(text, "todo" if dispatch_error else state)
+    status.write_text(text, encoding="utf-8")
 
 
 def bump_graph_attempts(project_root: Path, folder: str, prover: str, ok: bool) -> None:
@@ -232,9 +307,13 @@ def dispatch_with_config(
         else:
             raise ValueError(f"Unsupported prover type {prover_cfg.type!r} for {prover_name!r}")
 
+        pending = getattr(result, "pending_reattach", None)
+        dispatch_error = getattr(result, "dispatch_error", None)
         verify_ok = True
         final_gate_message = ""
-        if not skip_verify:
+        # A pending cloud task has produced no proof yet, so `lake build` would cost minutes
+        # to verify a tree the run never touched.
+        if not skip_verify and not pending and not dispatch_error:
             verify_ok, _ = verify_build(root, log_path)
             if verify_ok and result.success:
                 verify_ok, final_gate_message = final_verify_attempt(
@@ -246,20 +325,32 @@ def dispatch_with_config(
                     log.write(final_gate_message + "\n")
 
         ok = result.success and verify_ok
-        append_status(proof_dir, prover=prover_name, ok=ok, log_rel=log_rel)
-        bump_graph_attempts(root, folder, prover_name, ok)
+        append_status(
+            proof_dir,
+            prover=prover_name,
+            ok=ok,
+            log_rel=log_rel,
+            pending=pending,
+            dispatch_error=dispatch_error,
+        )
+        if not pending and not dispatch_error:
+            bump_graph_attempts(root, folder, prover_name, ok)
 
-        run.status = "ok" if ok else "failed"
-        run.ended_at = utc_now()
-        run.result = "PROVEN" if ok else "FAILED"
-        run.verify_ok = verify_ok
+        run.status, run.result, run.ended_at, exit_code = run_outcome(
+            ok=ok, pending=bool(pending), dispatch_error=bool(dispatch_error)
+        )
+        # No verification runs for a pending task, so do not record a verdict.
+        run.verify_ok = None if pending else verify_ok
         run.message = result.message
         write_run(root, run)
         set_graph_active_agent(root, run=None)
 
         print(result.message)
-        print(f"verify={'ok' if verify_ok else 'failed'}")
-        return 0 if ok else 1
+        verify_label = (
+            "skipped" if (pending or dispatch_error) else ("ok" if verify_ok else "failed")
+        )
+        print(f"verify={verify_label}")
+        return exit_code
     except Exception as exc:
         run.status = "error"
         run.ended_at = utc_now()
